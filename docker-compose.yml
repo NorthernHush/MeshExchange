@@ -1,0 +1,11 @@
+    version: "3.9"  # или другая версия
+    services:
+      mongodb:
+        image: mongo:latest  # или другая версия MongoDB
+        ports:
+          - "27017:27017"
+        volumes:
+          - mongodb_data:/data/db  # Опционально, если данные должны сохраняться
+
+    volumes:
+      mongodb_data: # Опционально, если используешь именованный том
