@@ -19,7 +19,7 @@
 
 #include "blake3.h"
 
-#define DEFAULT_PORT     7211
+#define DEFAULT_PORT     4141
 #define CLEAR "clear"
 #define BUFFER_SIZE      4096
 #define FILENAME_MAX_LEN 256
