@@ -1,0 +1,24 @@
+{
+  "name": "meshexchange",
+  "version": "1.0.0",
+  "description": "Powerful, secure, peer-assisted file exchange for local and distributed networks.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NorthernHush/MeshExchange.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/NorthernHush/MeshExchange/issues"
+  },
+  "homepage": "https://github.com/NorthernHush/MeshExchange#readme"
+}

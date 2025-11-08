@@ -29,7 +29,7 @@ gcc -c ../crypto/aes_gcm.c -o aes_gcm.o -Iinclude -Ideps/blake3 -Wall -Wextra
 BLAKE3_DIR=../../deps/blake3
 # Компилируем BLAKE3 без AVX512
 gcc -c $BLAKE3_DIR/blake3.c -o blake3.o -I$BLAKE3_DIR -Wall -Wextra
-gcc -c $BLAKE3_DIR/blake3_dispatch.c -o blake3_dispatch.o -I$BLAKE3_DIR -Wall -Wextra
+gcc -c $BLAKE3_DIR/blake3_dispatch.c -o blake3_dispatch.o -I$BLAKE3_DIR -Wall -Wextra -DBLAKE3_NO_AVX512
 gcc -c $BLAKE3_DIR/blake3_portable.c -o blake3_portable.o -I$BLAKE3_DIR -Wall -Wextra
 gcc -c $BLAKE3_DIR/blake3_sse2.c -o blake3_sse2.o -I$BLAKE3_DIR -Wall -Wextra -msse2
 gcc -c $BLAKE3_DIR/blake3_sse41.c -o blake3_sse41.o -I$BLAKE3_DIR -Wall -Wextra -mssse3 -msse4.1
@@ -38,5 +38,5 @@ gcc -c $BLAKE3_DIR/blake3_avx2.c -o blake3_avx2.o -I$BLAKE3_DIR -Wall -Wextra -m
 # НЕ компилируем blake3_avx512.c
 gcc -o client client.o mongo_ops.o utils.o aes_gcm.o \
     blake3.o blake3_dispatch.o blake3_portable.o \
-    blake3_sse2.o blake3_sse41.o blake3_avx2.o blake3_avx512.o \
+    blake3_sse2.o blake3_sse41.o blake3_avx2.o \
     $(pkg-config --libs libmongoc-1.0) -lssl -lcrypto -lpthread
