@@ -23,6 +23,7 @@
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h> 
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <arpa/inet.h>
@@ -47,7 +48,7 @@
 #include "../crypto/aes_gcm.h"
 
 // Конфигурация
-#define PORT 7211
+#define PORT 4141
 #define BUFFER_SIZE 4096
 #define MAX_KEY_LENGTH 32
 #define LOG_FILE "/tmp/file-server.log"
@@ -88,25 +89,51 @@ typedef struct {
     char fingerprint[65];
 } client_info_t;
 
-// Логирование
+// Логирование (в файл и в терминал)
 static void logger(log_level_t level, const char *format, ...) {
-    if (!g_log_file) return;
-    
     const char *level_str[] = {"DEBUG", "INFO", "WARNING", "ERROR"};
+    const char *color[] = {"\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m"};
+    const char *color_reset = "\x1b[0m";
+
     time_t now = time(NULL);
     struct tm *tm_info = localtime(&now);
     char timestamp[20];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
-    
-    fprintf(g_log_file, "[%s] [%s] ", timestamp, level_str[level]);
-    
+
+    // Compose the message into a buffer
+    char msgbuf[1024];
     va_list args;
     va_start(args, format);
-    vfprintf(g_log_file, format, args);
+    vsnprintf(msgbuf, sizeof(msgbuf), format, args);
     va_end(args);
-    
-    fprintf(g_log_file, "\n");
-    fflush(g_log_file);
+
+    // Log to file if available
+    if (g_log_file) {
+        fprintf(g_log_file, "[%s] [%s] %s\n", timestamp, level_str[level], msgbuf);
+        fflush(g_log_file);
+    }
+
+    // Also print to stderr (terminal) with colorized level
+    fprintf(stderr, "%s[%s] [%s] %s%s\n", color[level], timestamp, level_str[level], msgbuf, color_reset);
+}
+
+// Animated ASCII logo for startup
+static void print_startup_logo(void) {
+    const char *frames[] = {
+        "\n  __  __          _    _____  _                _\n |  \/  |   /\   | |  |  __ \| |              | |\n | \  / |  /  \  | |  | |__) | |__   ___  __ _| |_\n | |\/| | / /\ \ | |  |  ___/| '_ \ / _ \/ _` | __|\n | |  | |/ ____ \| |  | |    | | | |  __/ (_| | |_\n |_|  |_/_/    \_\_|  |_|    |_| |_|\___|\__,_|\__|\n\n",
+        "\n  __  __   __  __  _____  _                _\n |  \/  | |  \/  |/ ____|| |              | |\n | \  / | | \  / | |     | |__   ___  __ _| |_\n | |\/| | | |\/| | |     | '_ \ / _ \/ _` | __|\n | |  | | | |  | | |____ | | | |  __/ (_| | |_\n |_|  |_| |_|  |_|\_____||_| |_|\___|\__,_|\__|\n\n",
+        "\n  __  __  _   _ _______  _                _\n |  \/  |(_) | |__   __|| |              | |\n | \  / | _  | |  | |   | |__   ___  __ _| |_\n | |\/| || | | |  | |   | '_ \ / _ \/ _` | __|\n | |  | || | | |  | |   | | | |  __/ (_| | |_\n |_|  |_|/ |_|_|  |_|   |_| |_|\___|\__,_|\__|\n\n",
+        NULL
+    };
+
+    for (int i = 0; frames[i]; ++i) {
+        fprintf(stderr, "%s", frames[i]);
+        fflush(stderr);
+        usleep(120000); // 120 ms
+    }
+    // Title line
+    fprintf(stderr, "\x1b[1mMeshExchange\x1b[0m - starting up...\n\n");
+    fflush(stderr);
 }
 
 // Получение расширения файла
@@ -988,29 +1015,69 @@ static bool init_ssl(void) {
         return false;
     }
     
-    // Загрузка сертификатов
-    const char *cert_file = "../server-cert.pem";
-    const char *key_file = "../server-key.pem";
-    const char *ca_file = "../ca.pem";
-    
+    // Загрузка сертификатов — пробуем несколько путей для удобства разработки/запуска
+    const char *cert_candidates[] = {"./server-cert.pem", "../server-cert.pem", "server/server-cert.pem", "src/server/server-cert.pem", NULL};
+    const char *key_candidates[] = {"./server-key.pem", "../server-key.pem", "server/server-key.pem", "src/server/server-key.pem", NULL};
+    const char *ca_candidates[]  = {"./ca.pem", "../ca.pem", "server/ca.pem", "src/server/ca.pem", NULL};
+
+    const char *cert_file = NULL;
+    const char *key_file = NULL;
+    const char *ca_file = NULL;
+
+    for (const char **p = cert_candidates; *p; ++p) {
+        if (access(*p, R_OK) == 0) { cert_file = *p; break; }
+    }
+    for (const char **p = key_candidates; *p; ++p) {
+        if (access(*p, R_OK) == 0) { key_file = *p; break; }
+    }
+    for (const char **p = ca_candidates; *p; ++p) {
+        if (access(*p, R_OK) == 0) { ca_file = *p; break; }
+    }
+
+    if (!cert_file) {
+        logger(LOG_ERROR, "Failed to find server certificate (tried multiple locations)");
+        return false;
+    }
+    if (!key_file) {
+        logger(LOG_ERROR, "Failed to find server private key (tried multiple locations)");
+        return false;
+    }
+    if (!ca_file) {
+        logger(LOG_WARNING, "CA certificate not found; continuing without explicit CA file (peer verification may fail)");
+    }
+
     if (SSL_CTX_use_certificate_file(g_ssl_ctx, cert_file, SSL_FILETYPE_PEM) <= 0) {
-        logger(LOG_ERROR, "Failed to load server certificate");
+        unsigned long e = ERR_get_error();
+        const char *err = e ? ERR_error_string(e, NULL) : "unknown";
+        logger(LOG_ERROR, "Failed to load server certificate from %s: %s", cert_file, err);
         return false;
+    } else {
+        logger(LOG_INFO, "Loaded server certificate from %s", cert_file);
     }
-    
+
     if (SSL_CTX_use_PrivateKey_file(g_ssl_ctx, key_file, SSL_FILETYPE_PEM) <= 0) {
-        logger(LOG_ERROR, "Failed to load server private key");
+        unsigned long e = ERR_get_error();
+        const char *err = e ? ERR_error_string(e, NULL) : "unknown";
+        logger(LOG_ERROR, "Failed to load server private key from %s: %s", key_file, err);
         return false;
+    } else {
+        logger(LOG_INFO, "Loaded server private key from %s", key_file);
     }
-    
+
     if (!SSL_CTX_check_private_key(g_ssl_ctx)) {
-        logger(LOG_ERROR, "Server certificate and private key do not match");
+        logger(LOG_ERROR, "Server certificate and private key do not match (%s / %s)", cert_file, key_file);
         return false;
     }
-    
-    if (SSL_CTX_load_verify_locations(g_ssl_ctx, ca_file, NULL) <= 0) {
-        logger(LOG_ERROR, "Failed to load CA certificate");
-        return false;
+
+    if (ca_file) {
+        if (SSL_CTX_load_verify_locations(g_ssl_ctx, ca_file, NULL) <= 0) {
+            unsigned long e = ERR_get_error();
+            const char *err = e ? ERR_error_string(e, NULL) : "unknown";
+            logger(LOG_ERROR, "Failed to load CA certificate from %s: %s", ca_file, err);
+            return false;
+        } else {
+            logger(LOG_INFO, "Loaded CA certificate from %s", ca_file);
+        }
     }
     
     SSL_CTX_set_verify(g_ssl_ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
@@ -1152,6 +1219,8 @@ int main() {
     if (!init_logging()) {
         return EXIT_FAILURE;
     }
+    // Print animated startup logo to terminal
+    print_startup_logo();
     
     if (!setup_signal_handlers()) {
         cleanup_resources();
