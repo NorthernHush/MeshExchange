@@ -19,7 +19,7 @@
 
 #include "blake3.h"
 
-#define DEFAULT_PORT     4141
+#define DEFAULT_PORT     6515
 #define CLEAR "clear"
 #define BUFFER_SIZE      4096
 #define FILENAME_MAX_LEN 256
@@ -45,14 +45,14 @@ static SSL_CTX *init_client_ssl_ctx(void) {
     }
 
     /* Load CA certificate to verify server identity */
-    if (SSL_CTX_load_verify_locations(ctx, "../ca.pem", NULL) <= 0) {
+    if (SSL_CTX_load_verify_locations(ctx, "src/ca.pem", NULL) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
 
     /* Load client certificate and private key for mTLS */
-    if (SSL_CTX_use_certificate_file(ctx, "../client-cert.pem", SSL_FILETYPE_PEM) <= 0 ||
-        SSL_CTX_use_PrivateKey_file(ctx, "../client-key.pem", SSL_FILETYPE_PEM) <= 0) {
+    if (SSL_CTX_use_certificate_file(ctx, "src/client-cert.pem", SSL_FILETYPE_PEM) <= 0 ||
+        SSL_CTX_use_PrivateKey_file(ctx, "src/client-key.pem", SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }

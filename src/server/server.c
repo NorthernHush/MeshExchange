@@ -60,14 +60,14 @@
 #include "../crypto/aes_gcm.h"
 
 // Конфигурация
-#define PORT 6161 // порт, на котором слушает сервер
+#define PORT 6515 // порт, на котором слушает сервер
 #define BUFFER_SIZE 4096 // размер буфера для операций ввода-вывода
 #define MAX_KEY_LENGTH 32 // максимальная длина ключа (байты)
 #define LOG_FILE "/tmp/file-server.log" // файл для логов по умолчанию
 #define MONGODB_URI "mongodb://localhost:27017" // строка подключения к MongoDB
 #define DATABASE_NAME "file_exchange" // имя БД
 #define COLLECTION_NAME "file_groups" // имя коллекции
-#define STORAGE_DIR "../../filetrade" // путь к каталогу хранения
+#define STORAGE_DIR "filetrade" // путь к каталогу хранения
 
 // Hello world 
 // Уровни логирования
@@ -1063,9 +1063,9 @@ static bool init_ssl(void) {
     }
     
     // Загрузка сертификатов — пробуем несколько путей для удобства разработки/запуска
-    const char *cert_candidates[] = {"./server-cert.pem", "../server-cert.pem", "server/server-cert.pem", "src/server/server-cert.pem", NULL};
-    const char *key_candidates[] = {"./server-key.pem", "../server-key.pem", "server/server-key.pem", "src/server/server-key.pem", NULL};
-    const char *ca_candidates[]  = {"./ca.pem", "../ca.pem", "server/ca.pem", "src/server/ca.pem", NULL};
+    const char *cert_candidates[] = {"src/server-cert.pem", "../server-cert.pem", "server/server-cert.pem", "src/server/server-cert.pem", NULL};
+    const char *key_candidates[] = {"src/server-key.pem", "../server-key.pem", "server/server-key.pem", "src/server/server-key.pem", NULL};
+    const char *ca_candidates[]  = {"src/ca.pem", "../ca.pem", "server/ca.pem", "src/server/ca.pem", NULL};
 
     const char *cert_file = NULL;
     const char *key_file = NULL;
