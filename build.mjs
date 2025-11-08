@@ -67,7 +67,6 @@ async function buildDaemon() {
 }
 
 async function buildClient() {
-	// Emulate src/client/build.sh sequence
 	const pkgCflags = (await pkgConfig('--cflags libmongoc-1.0')) || '';
 	const pkgLibs = (await pkgConfig('--libs libmongoc-1.0')) || '';
 	const common = ['-Iinclude', `-I${BLAKE3_DIR}`, '-Wall', '-Wextra'];
@@ -109,7 +108,8 @@ async function buildServer() {
 
 	const blakeObjs = [
 		['gcc', ['-c', `${BLAKE3_DIR}/blake3.c`, '-o', 'blake3.o', '-I' + BLAKE3_DIR, '-Wall', '-Wextra']],
-		['gcc', ['-c', `${BLAKE3_DIR}/blake3_dispatch.c`, '-o', 'blake3_dispatch.o', '-I' + BLAKE3_DIR, '-Wall', '-Wextra']],
+		// Prevent dispatch from referencing AVX512 symbols unless the avx512 object is compiled
+		['gcc', ['-c', `${BLAKE3_DIR}/blake3_dispatch.c`, '-o', 'blake3_dispatch.o', '-I' + BLAKE3_DIR, '-Wall', '-Wextra', '-DBLAKE3_NO_AVX512']],
 		['gcc', ['-c', `${BLAKE3_DIR}/blake3_portable.c`, '-o', 'blake3_portable.o', '-I' + BLAKE3_DIR, '-Wall', '-Wextra']],
 		['gcc', ['-c', `${BLAKE3_DIR}/blake3_sse2.c`, '-o', 'blake3_sse2.o', '-I' + BLAKE3_DIR, '-Wall', '-Wextra', '-msse2']],
 		['gcc', ['-c', `${BLAKE3_DIR}/blake3_sse41.c`, '-o', 'blake3_sse41.o', '-I' + BLAKE3_DIR, '-Wall', '-Wextra', '-mssse3', '-msse4.1']],
@@ -131,7 +131,6 @@ async function buildMongoClient() {
 }
 
 async function buildTests() {
-	// Example simple test runner build
 	const pkg = (await pkgConfig('--cflags --libs libmongoc-1.0')) || '';
 	const args = ['-Iinclude', `-I${BLAKE3_DIR}`, '-o', 'tests/test_runner', 'tests/test_runner.c', 'tests/test_utils.c', ...pkg.split(' ').filter(Boolean), '-lssl', '-lcrypto'];
 	return run('gcc', args);
