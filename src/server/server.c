@@ -16,17 +16,25 @@
 #define _POSIX_C_SOURCE 200809L
 #define _GNU_SOURCE
 
+// --- Заголовочные файлы ---
+// Ошибки, сигналы и системные константы
 #include <errno.h>
 #include <signal.h>
 #include <linux/limits.h>
+
+// OpenSSL: ошибки, хеши, EVP API, генерация случайных байт, TLS
 #include <openssl/err.h>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
-#include <openssl/rand.h> 
+#include <openssl/rand.h>
+
+// Для форматированного вывода с переменным числом аргументов
 #include <stdarg.h>
+
+// Стандартные типы и IO
 #include <stdint.h>
 #include <stdio.h>
-#include <arpa/inet.h>
+#include <arpa/inet.h> // inet_ntoa и сетевые структуры
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -35,8 +43,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
+
+// MongoDB C driver и BSON
 #include <mongoc/mongoc.h>
 #include <bson/bson.h>
+
+// OpenSSL TLS API
 #include <openssl/ssl.h>
 
 #define BLAKE3_IMPLEMENTATION
@@ -48,14 +60,14 @@
 #include "../crypto/aes_gcm.h"
 
 // Конфигурация
-#define PORT 4141
-#define BUFFER_SIZE 4096
-#define MAX_KEY_LENGTH 32
-#define LOG_FILE "/tmp/file-server.log"
-#define MONGODB_URI "mongodb://localhost:27017"
-#define DATABASE_NAME "file_exchange"
-#define COLLECTION_NAME "file_groups"
-#define STORAGE_DIR "../../filetrade"
+#define PORT 6161 // порт, на котором слушает сервер
+#define BUFFER_SIZE 4096 // размер буфера для операций ввода-вывода
+#define MAX_KEY_LENGTH 32 // максимальная длина ключа (байты)
+#define LOG_FILE "/tmp/file-server.log" // файл для логов по умолчанию
+#define MONGODB_URI "mongodb://localhost:27017" // строка подключения к MongoDB
+#define DATABASE_NAME "file_exchange" // имя БД
+#define COLLECTION_NAME "file_groups" // имя коллекции
+#define STORAGE_DIR "../../filetrade" // путь к каталогу хранения
 
 // Hello world 
 // Уровни логирования
@@ -91,38 +103,44 @@ typedef struct {
 
 // Логирование (в файл и в терминал)
 static void logger(log_level_t level, const char *format, ...) {
+    // Логгер: печатает сообщения и в файл, и в терминал (stderr). Уровни выделяются цветом в терминале.
+    // format и дополнения передаются через ... как в printf.
     const char *level_str[] = {"DEBUG", "INFO", "WARNING", "ERROR"};
-    const char *color[] = {"\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m"};
-    const char *color_reset = "\x1b[0m";
+    const char *color[] = {"\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m"}; // циан, зелёный, жёлтый, красный
+    const char *color_reset = "\x1b[0m"; // сброс цвета
 
+    // Получаем локальную временную метку
     time_t now = time(NULL);
     struct tm *tm_info = localtime(&now);
     char timestamp[20];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
 
-    // Compose the message into a buffer
+    // Формируем итоговое сообщение в буфер, безопасно (vsnprintf)
     char msgbuf[1024];
     va_list args;
     va_start(args, format);
     vsnprintf(msgbuf, sizeof(msgbuf), format, args);
     va_end(args);
 
-    // Log to file if available
+    // Записываем в файл лога, если файл открыт
     if (g_log_file) {
         fprintf(g_log_file, "[%s] [%s] %s\n", timestamp, level_str[level], msgbuf);
-        fflush(g_log_file);
+        fflush(g_log_file); // принудительно сбрасываем
     }
 
-    // Also print to stderr (terminal) with colorized level
+    // И одновременно выводим в терминал (stderr) с цветовой маркировкой уровня
     fprintf(stderr, "%s[%s] [%s] %s%s\n", color[level], timestamp, level_str[level], msgbuf, color_reset);
 }
 
 // Animated ASCII logo for startup
 static void print_startup_logo(void) {
     const char *frames[] = {
-        "\n  __  __          _    _____  _                _\n |  \/  |   /\   | |  |  __ \| |              | |\n | \  / |  /  \  | |  | |__) | |__   ___  __ _| |_\n | |\/| | / /\ \ | |  |  ___/| '_ \ / _ \/ _` | __|\n | |  | |/ ____ \| |  | |    | | | |  __/ (_| | |_\n |_|  |_/_/    \_\_|  |_|    |_| |_|\___|\__,_|\__|\n\n",
-        "\n  __  __   __  __  _____  _                _\n |  \/  | |  \/  |/ ____|| |              | |\n | \  / | | \  / | |     | |__   ___  __ _| |_\n | |\/| | | |\/| | |     | '_ \ / _ \/ _` | __|\n | |  | | | |  | | |____ | | | |  __/ (_| | |_\n |_|  |_| |_|  |_|\_____||_| |_|\___|\__,_|\__|\n\n",
-        "\n  __  __  _   _ _______  _                _\n |  \/  |(_) | |__   __|| |              | |\n | \  / | _  | |  | |   | |__   ___  __ _| |_\n | |\/| || | | |  | |   | '_ \ / _ \/ _` | __|\n | |  | || | | |  | |   | | | |  __/ (_| | |_\n |_|  |_|/ |_|_|  |_|   |_| |_|\___|\__,_|\__|\n\n",
+            "  __  __  __  __  _____  _   __  __  _   _  _____ \n",
+            " |  \/  ||  \/  ||  __ \| | |  \/  || | | ||  __ \ \n",
+            " | \  / || \  / || |__) | | | \  / || |_| || |__) |\n",
+            " | |\/| || |\/| ||  ___/| | | |\/| ||  _  ||  _  / \n",
+            " | |  | || |  | || |    |_| | |  | || | | || | \ \ \n",
+            " |_|  |_||_|  |_||_|    (_) |_|  |_||_| |_||_|  \_\ \n",
         NULL
     };
 
@@ -136,31 +154,57 @@ static void print_startup_logo(void) {
     fflush(stderr);
 }
 
+    // Функция для красивого отображения загрузки модулей с прогресс-эффектом
+    static void print_module_loading(const char **modules, size_t count) {
+        for (size_t i = 0; i < count; ++i) {
+            fprintf(stderr, "[ %2zu/%2zu ] Loading %-20s", i+1, count, modules[i]);
+            fflush(stderr);
+            /* простая анимация точек */
+            for (int t = 0; t < 6; ++t) {
+                fprintf(stderr, ".");
+                fflush(stderr);
+                usleep(120000);
+            }
+            fprintf(stderr, "   Done\n");
+            fflush(stderr);
+        }
+        fprintf(stderr, "\n");
+    }
+
 // Получение расширения файла
 static char* get_file_extension(const char *full_path) {
+    // Если путь пустой, возвращаем NULL
     if (!full_path) return NULL;
-    
+
+    // Находим последний слеш — получаем имя файла
     const char *filename = strrchr(full_path, '/');
-    if (!filename) filename = full_path;
-    else filename++;
-    
+    if (!filename) filename = full_path; // если слеша нет, весь путь — имя
+    else filename++; // пропускаем слеш
+
+    // Ищем точку в имени файла — возвращаем расширение (включая точку)
     const char *dot = strrchr(filename, '.');
     if (!dot || dot == filename) {
+        // либо точки нет, либо она первая — считаем, что расширения нет
         return strdup("");
     }
-    
+
+    // дублируем строку расширения (caller должен free)
     return strdup(dot);
 }
 
 // Получение имени файла без расширения
 static char* get_filename_without_extension(const char* full_filename) {
+    // На входе ожидаем полный путь или просто имя файла.
+    // Сначала выделим указатель на имя (после последнего '/'), затем найдём точку.
     const char *filename = strrchr(full_filename, '/');
     if (!filename) filename = full_filename;
     else filename++;
-    
+
+    // Находим точку с расширением в имени
     const char *dot = strrchr(filename, '.');
     size_t name_len = dot ? (size_t)(dot - filename) : strlen(filename);
-    
+
+    // Выделяем память для результата и возвращаем имя без расширения
     char *result = malloc(name_len + 1);
     if (!result) {
         logger(LOG_ERROR, "Memory allocation failed in get_filename_without_extension");
@@ -168,6 +212,9 @@ static char* get_filename_without_extension(const char* full_filename) {
     }
     
     strncpy(result, filename, name_len);
+    result[name_len] = '\0';
+    // Заполняем буфер и завершаем нулём
+    memcpy(result, filename, name_len);
     result[name_len] = '\0';
     return result;
 }
@@ -1221,6 +1268,9 @@ int main() {
     }
     // Print animated startup logo to terminal
     print_startup_logo();
+    // Показать прогресс загрузки модулей (визуальный эффект)
+    const char *modules[] = {"OpenSSL", "MongoDB", "Crypto", "Storage"};
+    print_module_loading(modules, sizeof(modules)/sizeof(modules[0]));
     
     if (!setup_signal_handlers()) {
         cleanup_resources();
