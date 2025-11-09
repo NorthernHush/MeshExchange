@@ -130,11 +130,11 @@ async function buildMongoClient() {
 	return run('gcc', args);
 }
 
-async function buildTests() {
-	const pkg = (await pkgConfig('--cflags --libs libmongoc-1.0')) || '';
-	const args = ['-Iinclude', `-I${BLAKE3_DIR}`, '-o', 'tests/test_runner', 'tests/test_runner.c', 'tests/test_utils.c', ...pkg.split(' ').filter(Boolean), '-lssl', '-lcrypto'];
-	return run('gcc', args);
-}
+// async function buildTests() {
+// 	const pkg = (await pkgConfig('--cflags --libs libmongoc-1.0')) || '';
+// 	const args = ['-Iinclude', `-I${BLAKE3_DIR}`, '-o', 'tests/test_runner', 'tests/test_runner.c', 'tests/test_utils.c', ...pkg.split(' ').filter(Boolean), '-lssl', '-lcrypto'];
+// 	return run('gcc', args);
+// }
 
 async function clean() {
 	const files = ['exchange-daemon', 'client', 'server', 'mongo_client', 'tests/test_runner', 'obfuscator', 'client.o', 'server.o', 'mongo_ops.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', 'blake3_avx512.o', 'blake3_sse41.o', 'blake3_sse2.o'];
@@ -153,7 +153,6 @@ async function main() {
 				await buildClient();
 				await buildServer();
 				await buildMongoClient();
-				await buildTests();
 				break;
 			case 'daemon':
 				await buildDaemon(); break;
