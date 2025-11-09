@@ -1,0 +1,463 @@
+================================================================================
+🧪 Запуск тестов MeshExchange — 2025-11-09 03:58:13
+================================================================================
+
+Найдено тестов: 6
+
+🔧 Компиляция: test_crypto.c
+❌ Ошибка компиляции test_crypto.c:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_crypto.c: В функции «crypto_aes_gcm_encrypt_decrypt_roundtrip_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_crypto.c:33:5: ошибка: неявная декларация функции «RAND_bytes» [-Wimplicit-function-declaration]
+   33 |     RAND_bytes(iv, sizeof(iv));
+      |     ^~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_crypto.c:43:26: ошибка: неявная декларация функции «crypto_decrypt_aes_gcm»; имелось в виду «crypto_encrypt_aes_gcm»? [-Wimplicit-function-declaration]
+   43 |     int decrypt_result = crypto_decrypt_aes_gcm(
+      |                          ^~~~~~~~~~~~~~~~~~~~~~
+      |                          crypto_encrypt_aes_gcm
+
+🔧 Компиляция: test_mongo_ops.c
+❌ Ошибка компиляции test_mongo_ops.c:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_mongo_ops.c:6:10: фатальная ошибка: mongoc/mongoc.h: Нет такого файла или каталога
+    6 | #include <mongoc/mongoc.h>
+      |          ^~~~~~~~~~~~~~~~~
+компиляция прервана.
+
+🔧 Компиляция: test_path_validation.c
+❌ Ошибка компиляции test_path_validation.c:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_path_validation.c:5:10: фатальная ошибка: ../src/server/server.h: Нет такого файла или каталога
+    5 | #include "../src/server/server.h"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~
+компиляция прервана.
+
+🔧 Компиляция: test_protocol.c
+❌ Ошибка компиляции test_protocol.c:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c: В функции «protocol_request_header_basic_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:18:20: ошибка: «FLAG_ENCRYPTED» не описан (первое использование в этой функции)
+   18 |     header.flags = FLAG_ENCRYPTED;
+      |                    ^~~~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:18:20: замечание: сообщение о каждом неописанном идентификаторе выдается один раз в каждой функции, где он встречается
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c: В функции «protocol_response_header_basic_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:41:21: ошибка: «STATUS_OK» не описан (первое использование в этой функции)
+   41 |     header.status = STATUS_OK;
+      |                     ^~~~~~~~~
+In file included from /usr/include/criterion/internal/assert.h:28,
+                 from /usr/include/criterion/assert.h:1681,
+                 from /usr/include/criterion/criterion.h:32,
+                 from /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:5:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c: В функции «protocol_command_constants_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:53:18: ошибка: «CMD_DELETE» не описан (первое использование в этой функции)
+   53 |     cr_assert_eq(CMD_DELETE, 4);
+      |                  ^~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c: В функции «protocol_status_constants_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:58:18: ошибка: «STATUS_OK» не описан (первое использование в этой функции)
+   58 |     cr_assert_eq(STATUS_OK, 0);
+      |                  ^~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:59:18: ошибка: «STATUS_ERROR» не описан (первое использование в этой функции)
+   59 |     cr_assert_eq(STATUS_ERROR, 1);
+      |                  ^~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:60:18: ошибка: «STATUS_NOT_FOUND» не описан (первое использование в этой функции)
+   60 |     cr_assert_eq(STATUS_NOT_FOUND, 2);
+      |                  ^~~~~~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:61:18: ошибка: «STATUS_ACCESS_DENIED» не описан (первое использование в этой функции)
+   61 |     cr_assert_eq(STATUS_ACCESS_DENIED, 3);
+      |                  ^~~~~~~~~~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:62:18: ошибка: «STATUS_INVALID_REQUEST» не описан (первое использование в этой функции)
+   62 |     cr_assert_eq(STATUS_INVALID_REQUEST, 4);
+      |                  ^~~~~~~~~~~~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c: В функции «protocol_flag_constants_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:67:18: ошибка: «FLAG_NONE» не описан (первое использование в этой функции)
+   67 |     cr_assert_eq(FLAG_NONE, 0);
+      |                  ^~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:68:18: ошибка: «FLAG_ENCRYPTED» не описан (первое использование в этой функции)
+   68 |     cr_assert_eq(FLAG_ENCRYPTED, 1);
+      |                  ^~~~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:69:18: ошибка: «FLAG_COMPRESSED» не описан (первое использование в этой функции)
+   69 |     cr_assert_eq(FLAG_COMPRESSED, 2);
+      |                  ^~~~~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:70:18: ошибка: «FLAG_PRIVATE» не описан (первое использование в этой функции)
+   70 |     cr_assert_eq(FLAG_PRIVATE, 4);
+      |                  ^~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c: В функции «protocol_flag_combinations_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:134:22: ошибка: «FLAG_ENCRYPTED» не описан (первое использование в этой функции)
+  134 |     uint32_t flags = FLAG_ENCRYPTED | FLAG_PRIVATE;
+      |                      ^~~~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:134:39: ошибка: «FLAG_PRIVATE» не описан (первое использование в этой функции)
+  134 |     uint32_t flags = FLAG_ENCRYPTED | FLAG_PRIVATE;
+      |                                       ^~~~~~~~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_protocol.c:137:30: ошибка: «FLAG_COMPRESSED» не описан (первое использование в этой функции)
+  137 |     flags = FLAG_ENCRYPTED | FLAG_COMPRESSED | FLAG_PRIVATE;
+      |                              ^~~~~~~~~~~~~~~
+
+🔧 Компиляция: test_runner.c
+❌ Ошибка компиляции test_runner.c:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_runner.c: В функции «run_tests»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_runner.c:31:13: ошибка: неявная декларация функции «setjmp» [-Wimplicit-function-declaration]
+   31 |         if (setjmp(test_env) == 0) {
+      |             ^~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_runner.c:31:20: ошибка: «test_env» не описан (первое использование в этой функции); имелось в виду «test_t»?
+   31 |         if (setjmp(test_env) == 0) {
+      |                    ^~~~~~~~
+      |                    test_t
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_runner.c:31:20: замечание: сообщение о каждом неописанном идентификаторе выдается один раз в каждой функции, где он встречается
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_runner.c: В функции «main»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_runner.c:70:14: предупреждение: неиспользуемый параметр «argc» [-Wunused-parameter]
+   70 | int main(int argc, char *argv[]) {
+      |          ~~~~^~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_runner.c:70:26: предупреждение: неиспользуемый параметр «argv» [-Wunused-parameter]
+   70 | int main(int argc, char *argv[]) {
+      |                    ~~~~~~^~~~~~
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_runner.c: На верхнем уровне:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_runner.c:68:16: предупреждение: «test_env» определена, но не используется [-Wunused-variable]
+   68 | static jmp_buf test_env;
+      |                ^~~~~~~~
+
+🔧 Компиляция: test_ssl.io.c
+❌ Ошибка компиляции test_ssl.io.c:
+/usr/bin/ld: /tmp/cc55URhl.o: предупреждение: перемещение указывает на «criterion_options» из раздела только для чтения «.text»
+/usr/bin/ld: /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib/Scrt1.o: в функции «_start»:
+(.text+0x1b): undefined reference to `main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_initialization_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:14:(.text+0x5): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:14:(.text+0x11): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_complete_buffer_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:29:(.text+0x25): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:29:(.text+0x31): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_partial_sends_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:50:(.text+0x45): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:50:(.text+0x51): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_error_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:64:(.text+0x65): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:64:(.text+0x71): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_recv_all_complete_buffer_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:78:(.text+0x85): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:78:(.text+0x91): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_recv_all_partial_receives_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:97:(.text+0xa5): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:97:(.text+0xb1): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_recv_all_error_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:116:(.text+0xc5): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:116:(.text+0xd1): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_write_wrapper_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:128:(.text+0xe5): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:128:(.text+0xf1): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_read_wrapper_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:148:(.text+0x105): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:148:(.text+0x111): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_connect_success_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:168:(.text+0x125): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:168:(.text+0x131): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_connect_failure_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:180:(.text+0x145): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:180:(.text+0x151): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_certificate_verification_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:194:(.text+0x165): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:194:(.text+0x171): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_mutual_tls_client_cert_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:207:(.text+0x185): undefined reference to `criterion_internal_test_setup'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:207:(.text+0x191): undefined reference to `criterion_internal_test_main'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_initialization_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:16:(.text+0x1bf): undefined reference to `create_mock_ssl_ctx'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:17:(.text+0x1cd): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:17:(.text+0x1d5): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:20:(.text+0x1dd): undefined reference to `create_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:21:(.text+0x1ef): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:21:(.text+0x1fb): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:24:(.text+0x203): undefined reference to `destroy_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:17:(.text+0x24e): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:17:(.text+0x26a): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:17:(.text+0x288): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:17:(.text+0x2ad): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:17:(.text+0x2b5): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:17:(.text+0x2c3): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:21:(.text+0x2e6): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:21:(.text+0x302): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:21:(.text+0x31d): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:21:(.text+0x342): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:21:(.text+0x34a): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:17:(.text+0x368): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:21:(.text+0x380): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_complete_buffer_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:31:(.text+0x3af): undefined reference to `create_mock_socket'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:32:(.text+0x3bb): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:32:(.text+0x3d8): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:32:(.text+0x3fb): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:32:(.text+0x41b): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:32:(.text+0x440): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:32:(.text+0x448): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:32:(.text+0x455): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:38:(.text+0x468): undefined reference to `send_all'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:39:(.text+0x477): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:39:(.text+0x499): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:39:(.text+0x4b5): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:39:(.text+0x4d5): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:39:(.text+0x4fa): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:39:(.text+0x502): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:39:(.text+0x511): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:42:(.text+0x518): undefined reference to `get_mock_socket_data'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:43:(.text+0x52a): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:43:(.text+0x536): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:44:(.text+0x555): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:44:(.text+0x57b): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:44:(.text+0x597): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:44:(.text+0x5b7): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:44:(.text+0x5dc): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:44:(.text+0x5e4): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:44:(.text+0x5f2): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:43:(.text+0x636): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:43:(.text+0x652): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:43:(.text+0x671): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:43:(.text+0x696): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:43:(.text+0x69e): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:32:(.text+0x6ac): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:39:(.text+0x6b9): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:44:(.text+0x6d9): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:32:(.text+0x6f1): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:43:(.text+0x708): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_partial_sends_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:51:(.text+0x73f): undefined reference to `create_mock_socket'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:52:(.text+0x74d): undefined reference to `set_mock_socket_partial_writes'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:57:(.text+0x760): undefined reference to `send_all'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:58:(.text+0x76f): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:58:(.text+0x791): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:58:(.text+0x7ad): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:58:(.text+0x7c7): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:58:(.text+0x7ec): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:58:(.text+0x7f4): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:58:(.text+0x7ff): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:58:(.text+0x838): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:58:(.text+0x83f): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_error_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:65:(.text+0x86f): undefined reference to `create_mock_socket'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:66:(.text+0x87d): undefined reference to `set_mock_socket_error'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:71:(.text+0x890): undefined reference to `send_all'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:72:(.text+0x89f): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:72:(.text+0x8c1): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:72:(.text+0x8dd): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:72:(.text+0x8f7): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:72:(.text+0x91c): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:72:(.text+0x924): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:72:(.text+0x92f): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:72:(.text+0x968): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:72:(.text+0x96f): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_recv_all_complete_buffer_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:79:(.text+0x9a5): undefined reference to `create_mock_socket'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:85:(.text+0x9ba): undefined reference to `set_mock_socket_recv_data'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:88:(.text+0x9cb): undefined reference to `recv_all'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:89:(.text+0x9de): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:89:(.text+0x9ea): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:91:(.text+0xa26): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:91:(.text+0xa45): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:91:(.text+0xa66): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:91:(.text+0xa8e): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:91:(.text+0xa96): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:91:(.text+0xaa4): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:93:(.text+0xaab): undefined reference to `destroy_mock_socket'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:89:(.text+0xaf8): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:89:(.text+0xb17): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:89:(.text+0xb33): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:89:(.text+0xb5f): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:89:(.text+0xb67): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:89:(.text+0xb76): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:89:(.text+0xb88): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:91:(.text+0xba9): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:91:(.text+0xbc9): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_recv_all_partial_receives_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:98:(.text+0xc0a): undefined reference to `create_mock_socket'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:99:(.text+0xc18): undefined reference to `set_mock_socket_partial_reads'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:104:(.text+0xc2b): undefined reference to `set_mock_socket_recv_data'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:107:(.text+0xc3a): undefined reference to `recv_all'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:108:(.text+0xc4d): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:108:(.text+0xc59): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:110:(.text+0xca5): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:110:(.text+0xcc4): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:110:(.text+0xce3): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:110:(.text+0xd0b): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:110:(.text+0xd13): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:110:(.text+0xd21): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:112:(.text+0xd28): undefined reference to `destroy_mock_socket'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:108:(.text+0xd70): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:108:(.text+0xd8f): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:108:(.text+0xdab): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:108:(.text+0xdd7): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:108:(.text+0xddf): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:108:(.text+0xdee): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:108:(.text+0xe00): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:110:(.text+0xe29): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:110:(.text+0xe48): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_recv_all_error_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:117:(.text+0xe85): undefined reference to `create_mock_socket'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:118:(.text+0xe93): undefined reference to `set_mock_socket_recv_error'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:121:(.text+0xea4): undefined reference to `recv_all'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:122:(.text+0xeb3): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:122:(.text+0xed5): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:122:(.text+0xef1): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:122:(.text+0xf0b): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:122:(.text+0xf30): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:122:(.text+0xf38): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:122:(.text+0xf43): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:124:(.text+0xf4a): undefined reference to `destroy_mock_socket'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:122:(.text+0xf80): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:122:(.text+0xf87): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_write_wrapper_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:129:(.text+0xfaf): undefined reference to `create_mock_ssl_ctx'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:130:(.text+0xfba): undefined reference to `create_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:136:(.text+0xfdf): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:136:(.text+0x1002): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:136:(.text+0x1021): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:136:(.text+0x1041): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:136:(.text+0x106d): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:136:(.text+0x1075): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:136:(.text+0x1084): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:139:(.text+0x108c): undefined reference to `get_mock_ssl_data'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:140:(.text+0x109e): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:140:(.text+0x10aa): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:141:(.text+0x10c9): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:141:(.text+0x10ef): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:141:(.text+0x110e): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:141:(.text+0x112d): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:141:(.text+0x1155): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:141:(.text+0x115d): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:141:(.text+0x116b): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:143:(.text+0x1173): undefined reference to `destroy_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:140:(.text+0x11bf): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:140:(.text+0x11de): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:140:(.text+0x11fe): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:140:(.text+0x122a): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:140:(.text+0x1232): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:136:(.text+0x1240): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:136:(.text+0x1250): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:141:(.text+0x1278): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:140:(.text+0x1290): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_read_wrapper_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:149:(.text+0x12c5): undefined reference to `create_mock_ssl_ctx'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:150:(.text+0x12d0): undefined reference to `create_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:155:(.text+0x12e7): undefined reference to `set_mock_ssl_recv_data'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:159:(.text+0x130b): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:159:(.text+0x1317): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:161:(.text+0x1353): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:161:(.text+0x1372): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:161:(.text+0x1393): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:161:(.text+0x13bb): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:161:(.text+0x13c3): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:161:(.text+0x13d1): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:163:(.text+0x13d9): undefined reference to `destroy_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:164:(.text+0x13e1): undefined reference to `destroy_mock_ssl_ctx'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:159:(.text+0x1428): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:159:(.text+0x1447): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:159:(.text+0x145f): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:159:(.text+0x1493): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:159:(.text+0x149d): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:159:(.text+0x14ac): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:159:(.text+0x14b9): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:161:(.text+0x14e9): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:161:(.text+0x1509): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_connect_success_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:169:(.text+0x153f): undefined reference to `create_mock_ssl_ctx'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:170:(.text+0x154a): undefined reference to `create_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:173:(.text+0x1562): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:173:(.text+0x1584): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:173:(.text+0x15a3): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:173:(.text+0x15bf): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:173:(.text+0x15eb): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:173:(.text+0x15f3): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:173:(.text+0x15fd): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:175:(.text+0x1605): undefined reference to `destroy_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:173:(.text+0x1638): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:173:(.text+0x163f): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_connect_failure_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:181:(.text+0x166f): undefined reference to `create_mock_ssl_ctx'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:182:(.text+0x167a): undefined reference to `create_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:184:(.text+0x1687): undefined reference to `set_mock_ssl_connect_error'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:187:(.text+0x169c): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:187:(.text+0x16a4): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:189:(.text+0x16ac): undefined reference to `destroy_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:187:(.text+0x16f7): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:187:(.text+0x1716): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:187:(.text+0x1732): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:187:(.text+0x175e): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:187:(.text+0x1766): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:187:(.text+0x1774): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:187:(.text+0x1788): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_certificate_verification_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:195:(.text+0x17bf): undefined reference to `create_mock_ssl_ctx'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:196:(.text+0x17ca): undefined reference to `create_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:200:(.text+0x17e2): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:200:(.text+0x1803): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:200:(.text+0x1822): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:200:(.text+0x183e): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:200:(.text+0x186a): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:200:(.text+0x1872): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:200:(.text+0x187b): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:202:(.text+0x1883): undefined reference to `destroy_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:200:(.text+0x18b8): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:200:(.text+0x18bf): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_mutual_tls_client_cert_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:208:(.text+0x18ef): undefined reference to `create_mock_ssl_ctx'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:212:(.text+0x1914): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:212:(.text+0x1936): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:212:(.text+0x1955): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:212:(.text+0x1976): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:212:(.text+0x199e): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:212:(.text+0x19a6): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:212:(.text+0x19b5): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:215:(.text+0x19d7): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:215:(.text+0x19f9): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:215:(.text+0x1a18): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:215:(.text+0x1a39): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:215:(.text+0x1a61): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:215:(.text+0x1a69): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:215:(.text+0x1a78): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:217:(.text+0x1a80): undefined reference to `create_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:221:(.text+0x1a99): undefined reference to `criterion_options'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:221:(.text+0x1aa1): undefined reference to `cri_asserts_passed_incr'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:223:(.text+0x1aa9): undefined reference to `destroy_mock_ssl'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:221:(.text+0x1af7): undefined reference to `cr_translate_assert_msg'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:221:(.text+0x1b16): undefined reference to `cr_asprintf'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:221:(.text+0x1b36): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:221:(.text+0x1b62): undefined reference to `criterion_send_assert'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:221:(.text+0x1b6a): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:212:(.text+0x1b78): undefined reference to `criterion_abort_test'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:215:(.text+0x1b89): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:212:(.text+0x1ba1): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:221:(.text+0x1bb8): undefined reference to `cr_asprintf_free'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_initialization_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:14:(.text+0x1a): undefined reference to `criterion_internal_test_teardown'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_complete_buffer_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:29:(.text+0x3a): undefined reference to `criterion_internal_test_teardown'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_partial_sends_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:50:(.text+0x5a): undefined reference to `criterion_internal_test_teardown'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_error_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:64:(.text+0x7a): undefined reference to `criterion_internal_test_teardown'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_recv_all_complete_buffer_jmp»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:78:(.text+0x9a): undefined reference to `criterion_internal_test_teardown'
+/usr/bin/ld: /tmp/cc55URhl.o:/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:97: далее есть ещё неопределённые ссылки на «criterion_internal_test_teardown»
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_initialization_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:25:(.text+0x22d): undefined reference to `destroy_mock_ssl_ctx'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_complete_buffer_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:46:(.text+0x61b): undefined reference to `destroy_mock_socket'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_partial_sends_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:60:(.text+0x824): undefined reference to `destroy_mock_socket'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_send_all_error_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:74:(.text+0x954): undefined reference to `destroy_mock_socket'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_write_wrapper_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:144:(.text+0x119d): undefined reference to `destroy_mock_ssl_ctx'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_connect_success_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:176:(.text+0x162b): undefined reference to `destroy_mock_ssl_ctx'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_ssl_connect_failure_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:190:(.text+0x16d6): undefined reference to `destroy_mock_ssl_ctx'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_certificate_verification_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:203:(.text+0x18a9): undefined reference to `destroy_mock_ssl_ctx'
+/usr/bin/ld: /tmp/cc55URhl.o: в функции «ssl_mutual_tls_client_cert_impl»:
+/home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/tests/test_ssl.io.c:224:(.text+0x1ad3): undefined reference to `destroy_mock_ssl_ctx'
+/usr/bin/ld: предупреждение: создаётся DT_TEXTREL в PIE
+collect2: ошибка: выполнение ld завершилось с кодом возврата 1
+
+
+🚀 Запуск 0 тестов...
+
+
+============================================================
+✅ Пройдено: 0/0 тестов
+============================================================
+
+📄 Лог сохранён в: /home/just/mesh_proto/oxxyen_storage/MeshExchange/stableMesh/MeshExchange/test_report.log

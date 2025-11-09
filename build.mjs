@@ -4,11 +4,17 @@
 // Targets: all, daemon, client, server, mongo, tests, clean
 
 import { spawn } from 'child_process';
-import { env } from 'process';
+import chalk from 'chalk';
+import ora from 'ora';
+import figlet from 'figlet';
+import gradient from 'gradient-string';
+import inquirer from 'inquirer';
+import { env, exit } from 'process';
 
 const argv = process.argv.slice(2);
 const dryRun = argv.includes('--dry-run') || argv.includes('-n');
-const target = argv.find(a => !a.startsWith('-')) || 'all';
+const targetArg = argv.find(a => !a.startsWith('-'));
+const target = targetArg || null;
 
 function run(cmd, args = [], opts = {}) {
 	const full = `${cmd} ${args.join(' ')}`.trim();
@@ -59,6 +65,7 @@ async function checkEnvironment() {
 
 const BLAKE3_DIR = 'deps/blake3';
 
+//* собираем демона жеска
 async function buildDaemon() {
 	// gcc -o exchange-daemon src/main.c src/db/mongo_ops.c $(pkg-config --cflags --libs libmongoc-1.0)
 	const pkg = (await pkgConfig('--cflags --libs libmongoc-1.0')) || '';
@@ -66,6 +73,7 @@ async function buildDaemon() {
 	return run('gcc', args);
 }
 
+//* Собираем клиента жеска
 async function buildClient() {
 	const pkgCflags = (await pkgConfig('--cflags libmongoc-1.0')) || '';
 	const pkgLibs = (await pkgConfig('--libs libmongoc-1.0')) || '';
@@ -93,7 +101,7 @@ async function buildClient() {
 		const linkArgs = ['-o', 'client', 'client.o', 'mongo_ops.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', ...pkgLibs.split(' ').filter(Boolean), '-lssl', '-lcrypto', '-lpthread'];
 	return run('gcc', linkArgs);
 }
-
+//* собираем сервер
 async function buildServer() {
 	const pkgCflags = (await pkgConfig('--cflags libmongoc-1.0')) || '';
 	const pkgLibs = (await pkgConfig('--libs libmongoc-1.0')) || '';
@@ -130,14 +138,45 @@ async function buildMongoClient() {
 	return run('gcc', args);
 }
 
-// async function buildTests() {
-// 	const pkg = (await pkgConfig('--cflags --libs libmongoc-1.0')) || '';
-// 	const args = ['-Iinclude', `-I${BLAKE3_DIR}`, '-o', 'tests/test_runner', 'tests/test_runner.c', 'tests/test_utils.c', ...pkg.split(' ').filter(Boolean), '-lssl', '-lcrypto'];
-// 	return run('gcc', args);
-// }
+async function showLogo() {
+  const logo = figlet.textSync('MeshExchange', { font: 'Standard' });
+  console.log(gradient.pastel.multiline(logo));
+  console.log(chalk.gray('───────────────────────────────────────────────'));
+  console.log(chalk.cyanBright('         ⚙  Build System MeshExchange\n'));
+}
+
+
+async function buildTests() {
+
+	const args = ['tests.py'];
+	return run('python3', args);
+}
+//* вывод иттерактивного меню
+async function menuPrint() {
+  const { target } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'target',
+      message: 'Выберите цель сборки:',
+      choices: [
+        { name: '🧩  all      – собрать всё', value: 'all' },
+        { name: '🔁  daemon   – build exchange-daemon', value: 'daemon' },
+        { name: '💻  client   – build client', value: 'client' },
+        { name: '🖥️  server   – build server', value: 'server' },
+        { name: '🍃  mongo    – build mongo_client', value: 'mongo' },
+        { name: '🧪  tests    – run tests', value: 'tests' },
+        { name: '🧹  clean    – remove artifacts', value: 'clean' },
+        new inquirer.Separator(),
+        { name: '❌  Выход', value: 'exit' },
+      ],
+    },
+  ]);
+  return target;
+}
+
 
 async function clean() {
-	const files = ['exchange-daemon', 'client', 'server', 'mongo_client', 'tests/test_runner', 'obfuscator', 'client.o', 'server.o', 'mongo_ops.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', 'blake3_avx512.o', 'blake3_sse41.o', 'blake3_sse2.o'];
+	const files = ['exchange-daemon', 'client', 'server', 'mongo_client', 'tests/test_runner', 'obfuscator', 'client.o', 'mongo_ops_server.o', 'server.o', 'mongo_ops.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', 'blake3_avx512.o', 'blake3_sse41.o', 'blake3_sse2.o'];
 	for (const f of files) {
 		if (dryRun) console.log('[dry-run] rm -f', f);
 		else await run('rm', ['-f', f]);
@@ -145,6 +184,17 @@ async function clean() {
 }
 
 async function main() {
+	await showLogo();
+	let target = argv.find(a => !a.startsWith('-')) || null;
+
+	if (!target) {
+	target = await menuPrint();
+	if (target === 'exit') {
+		console.log('Выход из билд-системы.');
+		process.exit(0);
+	}
+	}
+
 	try {
 		await checkEnvironment();
 		switch (target) {
