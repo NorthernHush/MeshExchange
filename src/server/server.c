@@ -65,7 +65,7 @@
 #include "../crypto/aes_gcm.h"
 
 // Конфигурация
-#define PORT 6515 // порт, на котором слушает сервер
+#define PORT 5151 // порт, на котором слушает сервер
 #define BUFFER_SIZE 4096 // размер буфера для операций ввода-вывода
 #define MAX_KEY_LENGTH 32 // максимальная длина ключа (байты)
 #define LOG_FILE "/tmp/file-server.log" // файл для логов по умолчанию
@@ -769,6 +769,7 @@ void handle_upload_request(SSL *ssl, RequestHeader *req, const char *client_fing
         free(ciphertext);
         resp.status = RESP_ERROR;
         ssl_send_all(ssl, &resp, sizeof(resp));
+        unlink(filepath);
         return;
     }
 
@@ -810,6 +811,7 @@ void handle_upload_request(SSL *ssl, RequestHeader *req, const char *client_fing
     if (!success) {
         logger(LOG_ERROR, "MongoDB metadata insertion failed for %s: [code=%d] %s", req->filename, error.code, error.message);
         resp.status = RESP_ERROR;
+        unlink(filepath);
     } else {
         logger(LOG_INFO, "File upload completed successfully: %s (size=%zu)", req->filename, req->filesize);
         resp.status = RESP_SUCCESS;
@@ -945,68 +947,60 @@ void handle_download_request(SSL *ssl, RequestHeader *req, const char *client_fi
         ssl_send_all(ssl, &resp, sizeof(resp));
         return;
     }
-    
-    bson_t *query = bson_new();
-    BSON_APPEND_UTF8(query, "filename", req->filename);
-    BSON_APPEND_BOOL(query, "deleted", false);
-    
+
+    char filepath[PATH_MAX];
+    snprintf(filepath, sizeof(filepath), "%s/%s", STORAGE_DIR, req->filename);
+
+    bson_t *query = BCON_NEW("_id", BCON_UTF8(filepath), "deleted", BCON_BOOL(false));
     bson_error_t error;
     mongoc_cursor_t *cursor = mongoc_collection_find_with_opts(g_collection, query, NULL, NULL);
-    
     const bson_t *doc;
     bool found = mongoc_cursor_next(cursor, &doc);
-    
+
     if (!found) {
         ResponseHeader resp = { .status = RESP_FILE_NOT_FOUND };
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
     }
-    
+
     // Проверка прав доступа
     bson_iter_t iter;
     const char *owner_fp = NULL;
     bool is_public = false;
-    
     if (bson_iter_init_find(&iter, doc, "owner_fingerprint") && BSON_ITER_HOLDS_UTF8(&iter)) {
         owner_fp = bson_iter_utf8(&iter, NULL);
     }
-    
     if (bson_iter_init_find(&iter, doc, "public") && BSON_ITER_HOLDS_BOOL(&iter)) {
         is_public = bson_iter_bool(&iter);
     }
-    
     if (!is_public && (!owner_fp || strcmp(owner_fp, client_fingerprint) != 0)) {
         ResponseHeader resp = { .status = RESP_PERMISSION_DENIED };
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
     }
-    
-    char filepath[PATH_MAX];
-    snprintf(filepath, sizeof(filepath), "%s/%s", STORAGE_DIR, req->filename);
-    
+
+    // Проверяем существование файла на диске
     struct stat st;
     if (stat(filepath, &st) != 0) {
         ResponseHeader resp = { .status = RESP_FILE_NOT_FOUND };
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
     }
-    
+
     long long filesize = st.st_size;
-    
     if (req->offset < 0 || req->offset > filesize) {
         ResponseHeader resp = { .status = RESP_INVALID_OFFSET };
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
     }
-    
+
     FILE *fp = fopen(filepath, "rb");
     if (!fp) {
         ResponseHeader resp = { .status = RESP_ERROR };
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
     }
-    
-    // Чтение и расшифровка файла
+
     uint8_t *ciphertext = malloc(filesize);
     if (!ciphertext) {
         fclose(fp);
@@ -1014,7 +1008,7 @@ void handle_download_request(SSL *ssl, RequestHeader *req, const char *client_fi
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
     }
-    
+
     if (fread(ciphertext, 1, filesize, fp) != (size_t)filesize) {
         fclose(fp);
         free(ciphertext);
@@ -1023,27 +1017,24 @@ void handle_download_request(SSL *ssl, RequestHeader *req, const char *client_fi
         goto cleanup;
     }
     fclose(fp);
-    
-    // Получение IV и тега из MongoDB
+
+    // Получаем IV и тег
     const uint8_t *iv = NULL;
     const uint8_t *tag = NULL;
     uint32_t iv_len = 0, tag_len = 0;
-    
     if (bson_iter_init_find(&iter, doc, "iv") && BSON_ITER_HOLDS_BINARY(&iter)) {
         bson_iter_binary(&iter, NULL, &iv_len, &iv);
     }
-    
     if (bson_iter_init_find(&iter, doc, "tag") && BSON_ITER_HOLDS_BINARY(&iter)) {
         bson_iter_binary(&iter, NULL, &tag_len, &tag);
     }
-    
     if (!iv || !tag || iv_len != 12 || tag_len != 16) {
         free(ciphertext);
         ResponseHeader resp = { .status = RESP_ERROR };
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
     }
-    
+
     // Расшифровка
     uint8_t *plaintext = malloc(filesize);
     if (!plaintext) {
@@ -1052,42 +1043,36 @@ void handle_download_request(SSL *ssl, RequestHeader *req, const char *client_fi
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
     }
-    
+
     int pt_len = enhanced_aes_gcm_decrypt(ciphertext, filesize, g_file_crypto.key, iv, tag, plaintext);
     free(ciphertext);
-    
     if (pt_len < 0) {
         free(plaintext);
         ResponseHeader resp = { .status = RESP_ERROR };
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
     }
-    
-    // Отправка файла
+
+    // Отправка
     ResponseHeader resp = { .status = RESP_SUCCESS, .filesize = pt_len };
     ssl_send_all(ssl, &resp, sizeof(resp));
-    
     long long bytes_to_send = pt_len - req->offset;
-    if (bytes_to_send < 0) bytes_to_send = 0;
-    
     if (bytes_to_send > 0) {
         ssl_send_all(ssl, plaintext + req->offset, bytes_to_send);
     }
-    
     free(plaintext);
-    
-    // Добавляем событие в proc map
+
+    // Логируем событие
     if (!append_proc_event(filepath, "download", "success")) {
         logger(LOG_WARNING, "Failed to add proc event for download: %s", filepath);
     }
-    
+
     logger(LOG_INFO, "Sent %lld bytes of '%s' to client", bytes_to_send, req->filename);
-    
+
 cleanup:
     if (cursor) mongoc_cursor_destroy(cursor);
     if (query) bson_destroy(query);
 }
-
 // Обработка клиентского соединения
 void *handle_client(void *arg) {
     client_info_t *info = (client_info_t *)arg;
