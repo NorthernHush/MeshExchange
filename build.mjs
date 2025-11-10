@@ -416,7 +416,7 @@ async function buildMongoClient() {
 	return run('gcc', args);
 }
 
-// --------------------------- epic boot intro ---------------------------
+
 async function showEpicBoot() {
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -439,7 +439,6 @@ async function showEpicBoot() {
   const COLS = process.stdout.columns || 80;
   const ROWS = process.stdout.rows || 24;
 
-  // 1) quick system header + flicker
   console.clear();
   console.log(chalk.gray('┌──────────────────────── SYSTEM BOOT ───────────────────────┐'));
   console.log(chalk.gray(`|  ${new Date().toISOString()}  |`));
