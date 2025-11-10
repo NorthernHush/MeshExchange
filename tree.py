@@ -1,5 +1,39 @@
 import os
 
+# Расширения, которые НЕ включать в отчёт (бинарные и чувствительные)
+EXCLUDED_EXTENSIONS = {
+    # Бинарные исполняемые и объектные файлы
+    '.o', '.a', '.so', '.dylib', '.dll', '.exe', '.out', '.bin', '.elf',
+    # Образы, архивы, данные
+    '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.pdf', '.zip', '.tar',
+    '.gz', '.bz2', '.xz', '.7z', '.rar', '.mp3', '.mp4', '.wav', '.avi',
+    # Криптографические материалы и сертификаты
+    '.crt', '.cert', '.pem', '.key', '.der', '.p12', '.pfx', '.csr', '.jks',
+    # Другие потенциально бинарные или приватные форматы
+    '.db', '.sqlite', '.lock', '.swp', '.swo', '.pyc', '.pyo', '.cache',
+}
+
+def is_binary_file(file_path, chunk_size=1024):
+    """
+    Проверяет, является ли файл бинарным, читая начало и ища нулевые байты
+    или слишком много недекодируемых символов.
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            chunk = f.read(chunk_size)
+            if b'\x00' in chunk:
+                return True
+            # Попытка декодировать как UTF-8
+            try:
+                chunk.decode('utf-8')
+                return False
+            except UnicodeDecodeError:
+                # Если много недекодируемых байт — считаем бинарным
+                text_chars = bytes(range(32, 127)) + b'\n\r\t\f\b'
+                return bool(chunk.translate(None, text_chars))
+    except Exception:
+        return True  # По умолчанию — считаем бинарным при ошибке доступа
+
 def count_lines_in_file(file_path):
     """Считает количество строк в файле."""
     try:
@@ -37,14 +71,26 @@ def build_file_tree(root_dir, include_ext=None, level=0, output_lines=None, coll
         path = os.path.join(root_dir, item)
         if os.path.isfile(path):
             ext = os.path.splitext(item)[1].lower()
-            if include_ext is None or ext in include_ext:
-                lines = count_lines_in_file(path)
-                line_info = f"{indent}├── 📄 {item} ({lines} строк)" if isinstance(lines, int) else f"{indent}├── 📄 {item} ({lines})"
-                print(line_info)
-                output_lines.append(line_info)
-                if isinstance(lines, int):
-                    total_lines += lines
-                collected_files.append(path)
+
+            # Пропускаем явно исключённые расширения
+            if ext in EXCLUDED_EXTENSIONS:
+                continue
+
+            # Если задан фильтр по расширениям — проверяем соответствие
+            if include_ext is not None and ext not in include_ext:
+                continue
+
+            # Пропускаем бинарные файлы даже при совпадении расширения
+            if is_binary_file(path):
+                continue
+
+            lines = count_lines_in_file(path)
+            line_info = f"{indent}├── 📄 {item} ({lines} строк)" if isinstance(lines, int) else f"{indent}├── 📄 {item} ({lines})"
+            print(line_info)
+            output_lines.append(line_info)
+            if isinstance(lines, int):
+                total_lines += lines
+            collected_files.append(path)
         elif os.path.isdir(path):
             line_dir = f"{indent}📁 {item}/"
             print(line_dir)
