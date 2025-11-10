@@ -4,7 +4,7 @@
  *
  *
  * @file server.c
- * @author oxxy
+ * @author NorthernHush
  * @brief file server exchange file, crypto AES-256-GCM sertificate BLAKE3, openssl, mongodb
  * @version 0.1
  * @date 2025-10-27
