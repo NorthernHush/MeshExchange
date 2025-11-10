@@ -43,6 +43,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/inotify.h>
+#include <sys/stat.h>
+#include <linux/limits.h>
+#include <unistd.h>
+#include <errno.h>
 
 // MongoDB C driver и BSON
 #include <mongoc/mongoc.h>
@@ -70,7 +75,10 @@
 #define STORAGE_DIR "filetrade" // путь к каталогу хранения
 #define MAX_USERS_LISTEN 3     // указываем сколько подключений слушаем.
 
-// Hello world 
+// Конфигурация демона
+#define PID_FILE "/tmp/exchange-daemon.pid"
+#define EXCHANGE_DIR STORAGE_DIR  // используем уже заданный STORAGE_DIR из server.c
+
 // Уровни логирования
 typedef enum {
     LOG_DEBUG,
@@ -1128,10 +1136,7 @@ void *handle_client(void *arg) {
     
     X509_free(client_cert);
     
-    logger(LOG_INFO, "Client connected: %s:%d (fingerprint: %s)", 
-           inet_ntoa(info->client_addr.sin_addr), 
-           ntohs(info->client_addr.sin_port),
-           client_fingerprint);
+    logger(LOG_INFO, "Client connected: %s:%d (fingerprint: %s)", inet_ntoa(info->client_addr.sin_addr), ntohs(info->client_addr.sin_port), client_fingerprint);
     
     // Обработка запросов
     RequestHeader req;

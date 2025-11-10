@@ -333,9 +333,9 @@ const BLAKE3_DIR = 'deps/blake3';
 
 //* собираем демона жеска
 async function buildDaemon() {
-	// gcc -o exchange-daemon src/main.c src/db/mongo_ops.c $(pkg-config --cflags --libs libmongoc-1.0)
+	// gcc -o exchange-daemon src/daemon.c src/db/mongo_ops.c $(pkg-config --cflags --libs libmongoc-1.0)
 	const pkg = (await pkgConfig('--cflags --libs libmongoc-1.0')) || '';
-	const args = ['-o', 'exchange-daemon', 'src/main.c', 'src/db/mongo_ops.c', ...pkg.split(' ').filter(Boolean)];
+	const args = ['-o', 'exchange-daemon', 'src/daemon.c', 'src/db/mongo_ops.c', ...pkg.split(' ').filter(Boolean)];
 	return run('gcc', args);
 }
 
@@ -455,7 +455,7 @@ async function showEpicBoot() {
     await wait(60 + i * 10);
   }
 
-  // 2) System log boot with glitchy lines
+
   const sysLines = [
     '[CORE] Initializing neural microkernel...',
     '[CORE] Loading quantum-safe link libraries...',
@@ -476,7 +476,6 @@ async function showEpicBoot() {
   }
   await wait(300);
 
-  // 3) short matrix rain + title composite (renders a few frames)
   const frames = 14;
   const drops = new Array(Math.max(10, Math.floor(COLS / 2))).fill(0).map(() => randInt(0, ROWS - 1));
   const katakanaStart = 0x30A0;
