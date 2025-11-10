@@ -128,7 +128,6 @@ async function buildClient() {
 }
 //* собираем сервер
 async function buildServer() {
-	await showEpicBoot();
 	const pkgCflags = (await pkgConfig('--cflags libmongoc-1.0')) || '';
 	const pkgLibs = (await pkgConfig('--libs libmongoc-1.0')) || '';
 	const common = ['-Iinclude', `-I${BLAKE3_DIR}`, '-Wall', '-Wextra'];
@@ -158,7 +157,6 @@ async function buildServer() {
 }
 
 async function startMongoDocker() {
-	showEpicBoot();
 	const args = ['mongo.sh']
 	console.log('starting mongo database from ', args);
 	doWork();
@@ -202,7 +200,7 @@ async function menuPrint() {
         { name: '🖥️  server   – build server', value: 'server' },
 		{ name: '⌛️  mongo docker - docker build mongo', value: 'mongoDocker'},
         { name: '🍃  mongo    – build mongo_client', value: 'mongo' },
-		{ name: '🤯  clean for clone - clean dir for rep', value: 'cleanGit'},
+		{ name: '🤯  clean git - (admin)clean dir for rep', value: 'cleanGit'},
         { name: '🧪  tests    – run tests', value: 'tests' },
         { name: '🧹  clean    – remove artifacts', value: 'clean' },
         new inquirer.Separator(),
@@ -221,7 +219,7 @@ async function clean() {
 	}
 }
 
-
+// очищение и пуш на гитхаб проект(только для админа)
 async function cleanGit() {
 	const spinner = ora('🧹 Очистка артефактов сборки...').start();
 	await clean();
