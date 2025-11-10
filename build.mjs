@@ -10,11 +10,38 @@ import figlet from 'figlet';
 import gradient from 'gradient-string';
 import inquirer from 'inquirer';
 import { env, exit } from 'process';
+import cliProgress from 'cli-progress';
 
 const argv = process.argv.slice(2);
 const dryRun = argv.includes('--dry-run') || argv.includes('-n');
 const targetArg = argv.find(a => !a.startsWith('-'));
 const target = targetArg || null;
+
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+
+
+async function doWork() {
+    // 1. Запуск спиннера
+    const spinner = ora('Загрузка данных...').start();
+
+    try {
+        // 2. Имитация асинхронной операции (например, запрос к API)
+        // Используем setTimeout в промисе для задержки в 3 секунды
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // 3. Остановка спиннера с сообщением об успехе
+        spinner.succeed('Данные успешно загружены!');
+
+    } catch (error) {
+        // 4. Остановка спиннера с сообщением об ошибке
+        spinner.fail('Ошибка загрузки!');
+        console.error(error);
+    }
+}
+
 
 function run(cmd, args = [], opts = {}) {
 	const full = `${cmd} ${args.join(' ')}`.trim();
@@ -128,6 +155,17 @@ async function buildServer() {
 
 		const linkArgs = ['-o', 'server', 'server.o', 'mongo_ops_server.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', ...pkgLibs.split(' ').filter(Boolean), '-lssl', '-lcrypto', '-lpthread'];
 	return run('gcc', linkArgs);
+
+}
+
+
+// TODO: mongo start docker function, later..
+async function startMongoDocker() {
+	const args = ['mongo.sh']
+	console.log('starting mongo database from ', args);
+	doWork();
+	await sleep(2000);
+	return run('bash', args);
 }
 
 async function buildMongoClient() {
@@ -161,9 +199,11 @@ async function menuPrint() {
       choices: [
         { name: '🧩  all      – собрать всё', value: 'all' },
         { name: '🔁  daemon   – build exchange-daemon', value: 'daemon' },
-        { name: '💻  client   – build client', value: 'client' },
+		{ name: '💻  client   – build client', value: 'client' },
         { name: '🖥️  server   – build server', value: 'server' },
+		{ name: '⌛️  mongo docker - docker build mongo', value: 'mongoDocker'},
         { name: '🍃  mongo    – build mongo_client', value: 'mongo' },
+		{ name: '🤯  clean for clone - clean dir for rep', value: 'cleanGit'},
         { name: '🧪  tests    – run tests', value: 'tests' },
         { name: '🧹  clean    – remove artifacts', value: 'clean' },
         new inquirer.Separator(),
@@ -174,12 +214,48 @@ async function menuPrint() {
   return target;
 }
 
-
 async function clean() {
 	const files = ['exchange-daemon', 'client', 'server', 'mongo_client', 'tests/test_runner', 'obfuscator', 'client.o', 'mongo_ops_server.o', 'server.o', 'mongo_ops.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', 'blake3_avx512.o', 'blake3_sse41.o', 'blake3_sse2.o'];
 	for (const f of files) {
 		if (dryRun) console.log('[dry-run] rm -f', f);
 		else await run('rm', ['-f', f]);
+	}
+}
+
+
+async function cleanGit() {
+	const spinner = ora('🧹 Очистка артефактов сборки...').start();
+	await clean();
+	spinner.succeed('Артефакты удалены.');
+
+	spinner.start('🔍 Проверка изменений в репозитории...');
+	const status = await new Promise((resolve) => {
+		const p = spawn('git', ['status', '--porcelain'], { shell: false });
+		let output = '';
+		p.stdout.on('data', (d) => output += d.toString());
+		p.on('close', () => resolve(output.trim()));
+	});
+	if (!status) {
+		spinner.info('Нет изменений — коммит не требуется.');
+		return;
+	}
+	spinner.succeed('Обнаружены локальные изменения.');
+
+	spinner.start('📦 Индексация всех файлов...');
+	await run('git', ['add', '.']);
+	spinner.succeed('Файлы добавлены в индекс.');
+
+	spinner.start('📝 Создание коммита...');
+	const commitMsg = `build(clean): remove build artifacts and sync state [auto]`;
+	await run('git', ['commit', '-m', commitMsg]);
+	spinner.succeed('Коммит успешно создан.');
+
+	spinner.start('🚀 Отправка в origin/main...');
+	try {
+		await run('git', ['push', 'origin', 'main']);
+		spinner.succeed(chalk.green('Изменения успешно отправлены в репозиторий!'));
+	} catch (e) {
+		spinner.warn(chalk.yellow('Не удалось отправить изменения (возможно, нет изменений или нет доступа).'));
 	}
 }
 
@@ -199,13 +275,19 @@ async function main() {
 		await checkEnvironment();
 		switch (target) {
 			case 'all':
+				await doWork();
+				await sleep(3000);
 				await buildDaemon();
 				await buildClient();
 				await buildServer();
 				await buildMongoClient();
 				break;
+			case 'cleanGit':
+				await cleanGit();break;
 			case 'daemon':
 				await buildDaemon(); break;
+			case 'mongoDocker':
+				await startMongoDocker(); break;
 			case 'client':
 				await buildClient(); break;
 			case 'server':
