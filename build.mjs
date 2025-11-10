@@ -369,6 +369,7 @@ async function buildClient() {
 }
 //* собираем сервер
 async function buildServer() {
+	await showEpicBoot();
 	const pkgCflags = (await pkgConfig('--cflags libmongoc-1.0')) || '';
 	const pkgLibs = (await pkgConfig('--libs libmongoc-1.0')) || '';
 	const common = ['-Iinclude', `-I${BLAKE3_DIR}`, '-Wall', '-Wextra'];
