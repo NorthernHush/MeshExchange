@@ -116,8 +116,6 @@ bool mongo_update_or_insert(const char *filename, uint64_t size, const char *mim
 
     bson_destroy(set_fields);
 
-    bson_t reply;
-
     bson_error_t error;
 
     bool success = mongoc_collection_update_one(

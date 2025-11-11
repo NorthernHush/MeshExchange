@@ -180,7 +180,6 @@ async function showLogo() {
 	console.log(chalk.cyanBright('         ⚙  Build System MeshExchange\n'));
 }
 
-
 async function buildTests() {
 
 	const args = ['tests.py'];

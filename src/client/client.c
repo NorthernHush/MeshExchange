@@ -472,12 +472,32 @@ static int list_files_ssl(SSL *ssl) {
     return 0;
 }
 
+void print_startup_logo(void) {
+    printf("\n");
+    printf(" /$$      /$$                     /$$       /$$$$$$$$                     /$$                                              \n");
+    printf("| $$$    /$$$                    | $$      | $$_____/                    | $$                                              \n");
+    printf("| $$$$  /$$$$  /$$$$$$   /$$$$$$$| $$$$$$$ | $$       /$$   /$$  /$$$$$$$| $$$$$$$   /$$$$$$  /$$$$$$$   /$$$$$$   /$$$$$$ \n");
+    printf("| $$ $$/$$ $$ /$$__  $$ /$$_____/| $$__  $$| $$$$$   |  $$ /$$/ /$$_____/| $$__  $$ |____  $$| $$__  $$ /$$__  $$ /$$__  $$\n");
+    printf("| $$  $$$| $$| $$$$$$$$|  $$$$$$ | $$  \\ $$| $$__/    \\  $$$$/ | $$      | $$  \\ $$  /$$$$$$$| $$  \\ $$| $$  \\ $$| $$$$$$$$\n");
+    printf("| $$\\  $ | $$| $$_____/ \\____  $$| $$  | $$| $$        >$$  $$ | $$      | $$  | $$ /$$__  $$| $$  | $$| $$  | $$| $$_____/\n");
+    printf("| $$ \\/  | $$|  $$$$$$$ /$$$$$$$/| $$  | $$| $$$$$$$$ /$$/\\  $$|  $$$$$$$| $$  | $$|  $$$$$$$| $$  | $$|  $$$$$$$|  $$$$$$$\n");
+    printf("|__/     |__/ \\_______/|_______/ |__/  |__/|________/|__/  \\__/ \\_______/|__/  |__/ \\_______/|__/  |__/ \\____  $$ \\_______/\n");
+    printf("                                                                                                        /$$  \\ $$          \n");
+    printf("                                                                                                       |  $$$$$$/          \n");
+    printf("                                                                                                        \\______/           \n");
+    printf("\n");
+                                                                                                  
+
+
+}
+
 int main(int argc, char *argv[]) {
     struct sockaddr_in serv_addr;
     char *server_ip = "127.0.0.1";
     int port = DEFAULT_PORT;
 
     if (argc < 2) {
+        print_startup_logo();
         fprintf(stderr, "Usage: %s <command> [args...]\n", argv[0]);
         fprintf(stderr, "Commands:\n");
         fprintf(stderr, "  %s upload <local_filepath> <remote_filename>\n", argv[0]);
@@ -511,7 +531,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    printf("\t EXCHANGE DAEMON FILE\n\n");
+    print_startup_logo();
 
     /* Connect to server */
     printf("Connecting to %s:%d...\n", server_ip, port);

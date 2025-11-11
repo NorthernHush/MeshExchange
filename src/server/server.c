@@ -63,6 +63,7 @@
 #include "../db/mongo_ops_server.h"
 #include "../../include/protocol.h"
 #include "../crypto/aes_gcm.h"
+#include "../lib/error.h"
 
 // Конфигурация
 #define PORT 5151 // порт, на котором слушает сервер
@@ -163,32 +164,6 @@ static void logger(log_level_t level, const char *format, ...) {
             level_str[level],      // Уровень логирования
             msgbuf,                // Текст сообщения
             color_reset);          // Сброс цвета в конце
-}
-
-// Анимированный ASCII-логотип при запуске программы
-static void print_startup_logo(void) {
-    // Массив строк, представляющих построчный вывод логотипа.
-    // Каждая строка — отдельный "кадр", но на самом деле это просто построчная анимация.
-    // Последний элемент — NULL, чтобы обозначить конец массива.
-    const char *frames[] = {
-            "  __  __  __  __  _____  _   __  __  _   _  _____ \n",
-            " |  \/  ||  \/  ||  __ \| | |  \/  || | | ||  __ \ \n",
-            " | \  / || \  / || |__) | | | \  / || |_| || |__) |\n",
-            " | |\/| || |\/| ||  ___/| | | |\/| ||  _  ||  _  / \n",
-            " | |  | || |  | || |    |_| | |  | || | | || | \ \ \n",
-            " |_|  |_||_|  |_||_|    (_) |_|  |_||_| |_||_|  \_\ \n",
-        NULL
-    };
-
-    // Выводим каждую строку логотипа по очереди с небольшой задержкой для эффекта "появления"
-    for (int i = 0; frames[i]; ++i) {
-        fprintf(stderr, "%s", frames[i]);
-        fflush(stderr);               // Принудительно сбрасываем буфер, чтобы строка сразу отобразилась
-        usleep(120000);              // Задержка 120 мс между строками
-    }
-    // После логотипа выводим заголовок приложения жирным шрифтом (ANSI escape-код \x1b[1m)
-    fprintf(stderr, "\x1b[1mMeshExchange\x1b[0m - starting up...\n\n");
-    fflush(stderr);
 }
 
 
@@ -952,7 +927,6 @@ void handle_download_request(SSL *ssl, RequestHeader *req, const char *client_fi
     snprintf(filepath, sizeof(filepath), "%s/%s", STORAGE_DIR, req->filename);
 
     bson_t *query = BCON_NEW("_id", BCON_UTF8(filepath), "deleted", BCON_BOOL(false));
-    bson_error_t error;
     mongoc_cursor_t *cursor = mongoc_collection_find_with_opts(g_collection, query, NULL, NULL);
     const bson_t *doc;
     bool found = mongoc_cursor_next(cursor, &doc);
@@ -1373,6 +1347,27 @@ static bool setup_signal_handlers(void) {
     
     signal(SIGPIPE, SIG_IGN);
     return true;
+}
+
+
+// вывод логотипа ANSCII
+void print_startup_logo(void) {
+    printf("\n");
+    printf(" /$$      /$$                     /$$       /$$$$$$$$                     /$$                                              \n");
+    printf("| $$$    /$$$                    | $$      | $$_____/                    | $$                                              \n");
+    printf("| $$$$  /$$$$  /$$$$$$   /$$$$$$$| $$$$$$$ | $$       /$$   /$$  /$$$$$$$| $$$$$$$   /$$$$$$  /$$$$$$$   /$$$$$$   /$$$$$$ \n");
+    printf("| $$ $$/$$ $$ /$$__  $$ /$$_____/| $$__  $$| $$$$$   |  $$ /$$/ /$$_____/| $$__  $$ |____  $$| $$__  $$ /$$__  $$ /$$__  $$\n");
+    printf("| $$  $$$| $$| $$$$$$$$|  $$$$$$ | $$  \\ $$| $$__/    \\  $$$$/ | $$      | $$  \\ $$  /$$$$$$$| $$  \\ $$| $$  \\ $$| $$$$$$$$\n");
+    printf("| $$\\  $ | $$| $$_____/ \\____  $$| $$  | $$| $$        >$$  $$ | $$      | $$  | $$ /$$__  $$| $$  | $$| $$  | $$| $$_____/\n");
+    printf("| $$ \\/  | $$|  $$$$$$$ /$$$$$$$/| $$  | $$| $$$$$$$$ /$$/\\  $$|  $$$$$$$| $$  | $$|  $$$$$$$| $$  | $$|  $$$$$$$|  $$$$$$$\n");
+    printf("|__/     |__/ \\_______/|_______/ |__/  |__/|________/|__/  \\__/ \\_______/|__/  |__/ \\_______/|__/  |__/ \\____  $$ \\_______/\n");
+    printf("                                                                                                        /$$  \\ $$          \n");
+    printf("                                                                                                       |  $$$$$$/          \n");
+    printf("                                                                                                        \\______/           \n");
+    printf("\n");
+                                                                                                  
+
+
 }
 
 int main() {

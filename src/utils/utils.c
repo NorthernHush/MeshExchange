@@ -39,7 +39,7 @@ int recv_all(int sockfd, void *buffer, size_t len) {
     ssize_t total_received = 0;
     ssize_t bytes_received;
 
-    while(total_received < len) {
+    while(total_received < (ssize_t)len) {
 
         bytes_received = recv(sockfd, (char*)buffer + total_received, len - total_received, MSG_WAITALL);
 
