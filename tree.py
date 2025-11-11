@@ -10,7 +10,7 @@ EXCLUDED_EXTENSIONS = {
     # Криптографические материалы и сертификаты
     '.crt', '.cert', '.pem', '.key', '.der', '.p12', '.pfx', '.csr', '.jks',
     # Другие потенциально бинарные или приватные форматы
-    '.db', '.sqlite', '.lock', '.swp', '.swo', '.pyc', '.pyo', '.cache',
+    '.db', '.sqlite', '.lock', '.swp', '.swo', '.pyc', '.pyo', '.cache', '.vscode', 'node_modules',
 }
 
 def is_binary_file(file_path, chunk_size=1024):

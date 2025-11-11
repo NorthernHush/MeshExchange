@@ -222,12 +222,15 @@ async function clean() {
 async function cleanDir() {
 	const pathDir = '.vscode';
 
-	fs.rm(pathDir, { recursive: true }, (err) => {
-		if(err) throw err;
-		console.log("Директория была удалена - ", pathDir);
+	if(!pathDir) {
+		
+		fs.rm(pathDir, { recursive: true }, (err) => {
+			if(err) throw err;
+			console.log("Директория была удалена - ", pathDir);
 
-	});
+		});
 
+	}
 
 }
 
