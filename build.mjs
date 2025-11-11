@@ -9,6 +9,7 @@ import gradient from 'gradient-string';
 import inquirer from 'inquirer';
 import { env, exit } from 'process';
 import cliProgress from 'cli-progress';
+import fs from 'fs';
 
 const argv = process.argv.slice(2);
 const dryRun = argv.includes('--dry-run') || argv.includes('-n');
@@ -218,10 +219,23 @@ async function clean() {
 	}
 }
 
+async function cleanDir() {
+	const pathDir = '.vscode';
+
+	fs.rm(pathDir, { recursive: true }, (err) => {
+		if(err) throw err;
+		console.log("Директория была удалена - ", pathDir);
+
+	});
+
+
+}
+
 // очищение и пуш на гитхаб проект(только для админа)
 async function cleanGit() {
 	const spinner = ora('🧹 Очистка артефактов сборки...').start();
 	await clean();
+	await cleanDir();
 	spinner.succeed('Артефакты удалены.');
 
 	spinner.start('🔍 Проверка изменений в репозитории...');
