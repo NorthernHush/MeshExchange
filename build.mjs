@@ -200,7 +200,7 @@ async function menuPrint() {
         { name: '🖥️  server   – build server', value: 'server' },
 		{ name: '⌛️  mongo docker - docker build mongo', value: 'mongoDocker'},
         { name: '🍃  mongo    – build mongo_client', value: 'mongo' },
-		{ name: '🤯  clean git - (admin)clean dir for rep', value: 'cleanGit'},
+		{ name: '🤯  git - (admin)clean dir for rep', value: 'cleanGit'},
         { name: '🧪  tests    – run tests', value: 'tests' },
         { name: '🧹  clean    – remove artifacts', value: 'clean' },
         new inquirer.Separator(),
@@ -295,7 +295,7 @@ async function main() {
 				await buildServer();
 				await buildMongoClient();
 				break;
-			case 'cleanGit':
+			case 'git':
 				await cleanGit();break;
 			case 'daemon':
 				await buildDaemon(); break;
