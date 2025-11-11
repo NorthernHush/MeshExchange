@@ -300,36 +300,12 @@ static int download_file_ssl(SSL *ssl, const char *remote_filename, const char *
     RequestHeader header;
     ResponseHeader response;
 
-    fp = fopen(local_filepath, "ab");
-
-    if (!fp) {
-
-        perror("fopen");
-        fprintf(stderr, "Error: Could not open file %s for writing.\n", local_filepath);
-        return -1;
-                
-    }
-
-    if (fseek(fp, 0, SEEK_END) != 0) {
-
-        perror("fseek");
-        fclose(fp);
-        return -1;
-    }
-
-    long long offset = ftell(fp);
-    if (offset == -1) {
-
-        perror("ftell");
-        fclose(fp);
-        return -1;
-    }
-
     /* Send download request */
     header.command = CMD_DOWNLOAD;
     strncpy(header.filename, remote_filename, FILENAME_MAX_LEN - 1);
     header.filename[FILENAME_MAX_LEN - 1] = '\0';
     header.filesize = 0;
+    header.offset = 0; // Начинаем с начала файла
 
     printf("Requesting download of '%s' to '%s'...\n", remote_filename, local_filepath);
     if (ssl_send_all(ssl, &header, sizeof(RequestHeader)) == -1) {
@@ -362,9 +338,9 @@ static int download_file_ssl(SSL *ssl, const char *remote_filename, const char *
     }
 
     /* Receive file content */
-    long long total_received = offset;
+    long long total_received = 0;
     while (total_received < filesize) {
-        size_t bytes_to_read = (filesize - total_received < BUFFER_SIZE) ? 
+        size_t bytes_to_read = (filesize - total_received < BUFFER_SIZE) ?
                                (size_t)(filesize - total_received) : BUFFER_SIZE;
         int bytes_received = SSL_read(ssl, buffer, bytes_to_read);
         if (bytes_received <= 0) {
@@ -380,7 +356,7 @@ static int download_file_ssl(SSL *ssl, const char *remote_filename, const char *
             return -1;
         }
         total_received += bytes_received;
-        float progress = (float)(total_received - offset) / (float)(filesize - offset);
+        float progress = (float)total_received / (float)filesize;
         display_progress(progress);
     }
 
@@ -391,7 +367,7 @@ static int download_file_ssl(SSL *ssl, const char *remote_filename, const char *
         return -1;
     }
 
-    printf("Download completed successfully! Saved to '%s'. Total: %lld bytes.\n", 
+    printf("Download completed successfully! Saved to '%s'. Total: %lld bytes.\n",
            local_filepath, total_received);
     fclose(fp);
     return 0;

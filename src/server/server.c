@@ -75,6 +75,7 @@
 #define COLLECTION_NAME "file_groups" // имя коллекции
 #define STORAGE_DIR "filetrade" // путь к каталогу хранения
 #define MAX_USERS_LISTEN 3     // указываем сколько подключений слушаем.
+#define MAX_FILE_SIZE (100LL * 1024 * 1024) // максимальный размер файла 100MB
 
 // Конфигурация демона
 #define PID_FILE "/tmp/exchange-daemon.pid"
@@ -632,8 +633,16 @@ void handle_upload_request(SSL *ssl, RequestHeader *req, const char *client_fing
     }
 
     // Защита от path traversal: запрещаем ".." и любые подкаталоги в имени файла
-    if (strstr(req->filename, "..") || strchr(req->filename, '/')) {
-        logger(LOG_WARNING, "Path traversal attempt blocked for filename: %s", req->filename);
+    if (strstr(req->filename, "..") || strchr(req->filename, '/') || strlen(req->filename) == 0 || strlen(req->filename) > FILENAME_MAX_LEN - 1) {
+        logger(LOG_WARNING, "Path traversal or invalid filename blocked: %s", req->filename);
+        ResponseHeader resp = { .status = RESP_PERMISSION_DENIED };
+        ssl_send_all(ssl, &resp, sizeof(resp));
+        return;
+    }
+
+    // Проверка размера файла
+    if (req->filesize <= 0 || req->filesize > MAX_FILE_SIZE) {
+        logger(LOG_WARNING, "File size out of bounds: %lld bytes", req->filesize);
         ResponseHeader resp = { .status = RESP_PERMISSION_DENIED };
         ssl_send_all(ssl, &resp, sizeof(resp));
         return;
@@ -807,7 +816,6 @@ void handle_upload_request(SSL *ssl, RequestHeader *req, const char *client_fing
 
 // Обработка команды LIST
 void handle_list_request(SSL *ssl, const char *client_fingerprint) {
-    bson_t *query = bson_new();
     bson_t *opts = BCON_NEW(
         "projection", "{",
             "filename", BCON_INT32(1),
@@ -815,55 +823,36 @@ void handle_list_request(SSL *ssl, const char *client_fingerprint) {
             "uploaded_at", BCON_INT32(1),
             "public", BCON_INT32(1),
             "owner_fingerprint", BCON_INT32(1),
+            "recipient_fingerprint", BCON_INT32(1),
         "}"
     );
-    
-    // Показываем публичные файлы и файлы пользователя
-    bson_t *or_query = bson_new();
-        // Показываем:
+
+    // Показываем:
     // - файлы, загруженные мной (owner)
     // - файлы, где я — получатель
-    // - публичные файлы (если будут)
-    bson_t *or_array = bson_new();
+    // - публичные файлы
+    bson_t *query = BCON_NEW(
+        "$or", "[",
+            "{", "owner_fingerprint", BCON_UTF8(client_fingerprint), "}",
+            "{", "recipient_fingerprint", BCON_UTF8(client_fingerprint), "}",
+            "{", "public", BCON_BOOL(true), "}",
+        "]"
+    );
 
-    // 1. Я — владелец
-    bson_t owner_doc;
-    bson_init(&owner_doc);
-    BSON_APPEND_UTF8(&owner_doc, "owner_fingerprint", client_fingerprint);
-    BSON_APPEND_ARRAY_BEGIN(or_array, "$or", &owner_doc);
-    bson_append_document_end(or_array, &owner_doc);
+    mongoc_cursor_t *cursor = mongoc_collection_find_with_opts(g_collection, query, opts, NULL);
 
-    // 2. Я — получатель
-    bson_t recipient_doc;
-    bson_init(&recipient_doc);
-    BSON_APPEND_UTF8(&recipient_doc, "recipient_fingerprint", client_fingerprint);
-    BSON_APPEND_ARRAY_BEGIN(or_array, "$or", &recipient_doc);
-    bson_append_document_end(or_array, &recipient_doc);
-
-    // 3. Публичные (опционально)
-    bson_t public_doc;
-    bson_init(&public_doc);
-    BSON_APPEND_BOOL(&public_doc, "public", true);
-    BSON_APPEND_ARRAY_BEGIN(or_array, "$or", &public_doc);
-    bson_append_document_end(or_array, &public_doc);
-
-    bson_append_document(query, "$or", -1, or_array);
-    bson_destroy(or_array);
-    
-    mongoc_cursor_t *cursor = mongoc_collection_find_with_opts(g_collection, or_query, opts, NULL);
-    
     bson_error_t error;
     const bson_t *doc;
     char *json_str;
     size_t total_len = 0;
     char *full_list = NULL;
-    
+
     while (mongoc_cursor_next(cursor, &doc)) {
         json_str = bson_as_canonical_extended_json(doc, NULL);
         if (!json_str) continue;
-        
+
         size_t len = strlen(json_str);
-        
+
         if (total_len == 0) {
             full_list = malloc(len + 3);
             if (!full_list) {
@@ -881,16 +870,16 @@ void handle_list_request(SSL *ssl, const char *client_fingerprint) {
             full_list = new_list;
             full_list[total_len++] = ',';
         }
-        
+
         memcpy(full_list + total_len, json_str, len);
         total_len += len;
         bson_free(json_str);
     }
-    
+
     if (mongoc_cursor_error(cursor, &error)) {
         logger(LOG_ERROR, "Cursor error in list request: %s", error.message);
     }
-    
+
     if (total_len > 0) {
         full_list[total_len++] = ']';
         full_list[total_len] = '\0';
@@ -898,26 +887,25 @@ void handle_list_request(SSL *ssl, const char *client_fingerprint) {
         full_list = strdup("[]");
         total_len = strlen(full_list);
     }
-    
+
     ResponseHeader resp = { .status = RESP_SUCCESS, .filesize = total_len };
     ssl_send_all(ssl, &resp, sizeof(resp));
-    
+
     if (full_list) {
         ssl_send_all(ssl, full_list, total_len);
         free(full_list);
     }
-    
+
     mongoc_cursor_destroy(cursor);
     bson_destroy(query);
     bson_destroy(opts);
-    bson_destroy(or_query);
-    
+
     logger(LOG_INFO, "Sent file list to client");
 }
 
 // Обработка команды DOWNLOAD
 void handle_download_request(SSL *ssl, RequestHeader *req, const char *client_fingerprint) {
-    if (strstr(req->filename, "..") || strchr(req->filename, '/')) {
+    if (strstr(req->filename, "..") || strchr(req->filename, '/') || strlen(req->filename) == 0 || strlen(req->filename) > FILENAME_MAX_LEN - 1) {
         ResponseHeader resp = { .status = RESP_PERMISSION_DENIED };
         ssl_send_all(ssl, &resp, sizeof(resp));
         return;
@@ -940,14 +928,21 @@ void handle_download_request(SSL *ssl, RequestHeader *req, const char *client_fi
     // Проверка прав доступа
     bson_iter_t iter;
     const char *owner_fp = NULL;
+    const char *recipient_fp = NULL;
     bool is_public = false;
     if (bson_iter_init_find(&iter, doc, "owner_fingerprint") && BSON_ITER_HOLDS_UTF8(&iter)) {
         owner_fp = bson_iter_utf8(&iter, NULL);
     }
+    if (bson_iter_init_find(&iter, doc, "recipient_fingerprint") && BSON_ITER_HOLDS_UTF8(&iter)) {
+        recipient_fp = bson_iter_utf8(&iter, NULL);
+    }
     if (bson_iter_init_find(&iter, doc, "public") && BSON_ITER_HOLDS_BOOL(&iter)) {
         is_public = bson_iter_bool(&iter);
     }
-    if (!is_public && (!owner_fp || strcmp(owner_fp, client_fingerprint) != 0)) {
+    bool has_access = is_public ||
+                      (owner_fp && strcmp(owner_fp, client_fingerprint) == 0) ||
+                      (recipient_fp && strcmp(recipient_fp, client_fingerprint) == 0);
+    if (!has_access) {
         ResponseHeader resp = { .status = RESP_PERMISSION_DENIED };
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
@@ -962,7 +957,7 @@ void handle_download_request(SSL *ssl, RequestHeader *req, const char *client_fi
     }
 
     long long filesize = st.st_size;
-    if (req->offset < 0 || req->offset > filesize) {
+    if (req->offset < 0 || req->offset >= filesize) {
         ResponseHeader resp = { .status = RESP_INVALID_OFFSET };
         ssl_send_all(ssl, &resp, sizeof(resp));
         goto cleanup;
@@ -1041,7 +1036,7 @@ void handle_download_request(SSL *ssl, RequestHeader *req, const char *client_fi
         logger(LOG_WARNING, "Failed to add proc event for download: %s", filepath);
     }
 
-    logger(LOG_INFO, "Sent %lld bytes of '%s' to client", bytes_to_send, req->filename);
+    logger(LOG_INFO, "Sent %lld bytes of '%s' to client (offset %lld)", bytes_to_send, req->filename, req->offset);
 
 cleanup:
     if (cursor) mongoc_cursor_destroy(cursor);
