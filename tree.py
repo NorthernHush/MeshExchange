@@ -10,7 +10,14 @@ EXCLUDED_EXTENSIONS = {
     # Криптографические материалы и сертификаты
     '.crt', '.cert', '.pem', '.key', '.der', '.p12', '.pfx', '.csr', '.jks',
     # Другие потенциально бинарные или приватные форматы
-    '.db', '.sqlite', '.lock', '.swp', '.swo', '.pyc', '.pyo', '.cache', '.vscode', 'node_modules',
+    '.db', '.sqlite', '.lock', '.swp', '.swo', '.pyc', '.pyo', '.cache', '.vscode',
+}
+
+# Директории, которые нужно полностью пропускать (регистрозависимо)
+EXCLUDED_DIRECTORIES = {
+    'node_modules',
+    '.git',
+    # Можно добавить: '.hg', '.svn', '__pycache__', 'venv', 'dist', 'build' и т.д.
 }
 
 def is_binary_file(file_path, chunk_size=1024):
@@ -69,6 +76,11 @@ def build_file_tree(root_dir, include_ext=None, level=0, output_lines=None, coll
 
     for item in items:
         path = os.path.join(root_dir, item)
+
+        # Пропускаем исключённые директории (например, node_modules, .git)
+        if os.path.isdir(path) and item in EXCLUDED_DIRECTORIES:
+            continue
+
         if os.path.isfile(path):
             ext = os.path.splitext(item)[1].lower()
 
