@@ -112,7 +112,7 @@ static void show_progress(long long sent, long long total) {
 
     static int frame = 0;
 
-    fprintf(stderr, "\r\x1b[KUploading: [%3lld%%] %c  (%lld/%lld bytes)",
+    fprintf(stderr, "\r\x1b[Uploading: [%3lld%%] %c  (%lld/%lld bytes)",
             (total > 0 ? (sent * 100 / total) : 0),
             spinner[frame++ % 4],
             sent, total);
