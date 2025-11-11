@@ -275,7 +275,7 @@ static char* get_next_proc_key(const char *file_id) {
     bson_error_t error;
     
     char *next_key = NULL;
-    const bson_t *doc;
+    const bson_t *doc; //
     // Выполняем запрос на чтение одного документа (find)
     mongoc_cursor_t *cursor = mongoc_collection_find_with_opts(
         coll, query, NULL, NULL);
