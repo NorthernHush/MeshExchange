@@ -5,6 +5,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <stdio.h>
+#include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -19,7 +20,7 @@
 
 #include "blake3.h"
 
-#define DEFAULT_PORT     5151
+#define DEFAULT_PORT     8181
 #define CLEAR "clear"
 #define BUFFER_SIZE      4096
 #define FILENAME_MAX_LEN 256
@@ -448,6 +449,7 @@ static int list_files_ssl(SSL *ssl) {
     return 0;
 }
 
+// выводим стартовое лого
 void print_startup_logo(void) {
     printf("\n");
     printf(" /$$      /$$                     /$$       /$$$$$$$$                     /$$                                              \n");
@@ -463,36 +465,58 @@ void print_startup_logo(void) {
     printf("                                                                                                        \\______/           \n");
     printf("\n");
                                                                                                   
-
-
 }
 
 int main(int argc, char *argv[]) {
+    int client_port = DEFAULT_PORT; // Используем константу по умолчанию
     struct sockaddr_in serv_addr;
     char *server_ip = "127.0.0.1";
-    int port = DEFAULT_PORT;
+    int port = client_port;
+    int arg_offset = 1; // Смещение для аргументов команды
 
     if (argc < 2) {
         print_startup_logo();
-        fprintf(stderr, "Usage: %s <command> [args...]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <port> <command> [args...]\n", argv[0]);
         fprintf(stderr, "Commands:\n");
-        fprintf(stderr, "  %s upload <local_filepath> <remote_filename>\n", argv[0]);
-        fprintf(stderr, "  %s download <remote_filename> <local_filepath>\n", argv[0]);
-        fprintf(stderr, "  %s list\n", argv[0]);
-        fprintf(stderr, "Optional: --ip <ip> --port <port>\n");
+        fprintf(stderr, "  %s <port> upload <local_filepath> <remote_filename>\n", argv[0]);
+        fprintf(stderr, "  %s <port> download <remote_filename> <local_filepath>\n", argv[0]);
+        fprintf(stderr, "  %s <port> list\n", argv[0]);
+        fprintf(stderr, "Optional: --ip <ip> (default: 127.0.0.1)\n");
         return EXIT_FAILURE;
     }
 
-    /* Parse command-line arguments */
-    for (int i = 1; i < argc; ++i) {
+    // Обработка порта как первого аргумента
+    char *endptr;
+    errno = 0; // Сброс errno
+    long val = strtol(argv[1], &endptr, 10);
+
+    // Проверка на ошибки преобразования
+    if (errno != 0 || *endptr != '\0' || val <= 0 || val > 65535) {
+        fprintf(stderr, "❌ Error: Invalid port number '%s'. Port must be an integer between 1 and 65535.\n", argv[1]);
+        return EXIT_FAILURE;
+    }
+    port = (int)val; // Сохраняем порт
+    arg_offset = 2; // Теперь команды начинаются с argv[2]
+
+    if (argc < 3) { // Проверяем, есть ли команда после порта
+        print_startup_logo();
+        fprintf(stderr, "Usage: %s <port> <command> [args...]\n", argv[0]);
+        fprintf(stderr, "Commands:\n");
+        fprintf(stderr, "  %s <port> upload <local_filepath> <remote_filename>\n", argv[0]);
+        fprintf(stderr, "  %s <port> download <remote_filename> <local_filepath>\n", argv[0]);
+        fprintf(stderr, "  %s <port> list\n", argv[0]);
+        fprintf(stderr, "Optional: --ip <ip> (default: 127.0.0.1)\n");
+        return EXIT_FAILURE;
+    }
+
+    // Обработка IP (если указан)
+    for (int i = arg_offset; i < argc; ++i) {
         if (strcmp(argv[i], "--ip") == 0 && i + 1 < argc) {
-            server_ip = argv[++i];
-        } else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
-            port = atoi(argv[++i]);
+            server_ip = argv[++i]; // Увеличиваем i, чтобы пропустить следующий аргумент (IP)
         }
     }
 
-    /* Create TCP socket */
+    // Создание и подключение сокета
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
         perror("Socket creation error");
@@ -500,7 +524,7 @@ int main(int argc, char *argv[]) {
     }
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
+    serv_addr.sin_port = htons(port); // Используем извлеченный порт
     if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0) {
         perror("Invalid address/ Address not supported");
         close(sock);
@@ -509,7 +533,6 @@ int main(int argc, char *argv[]) {
 
     print_startup_logo();
 
-    /* Connect to server */
     printf("Connecting to %s:%d...\n", server_ip, port);
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         perror("Connection Failed");
@@ -517,7 +540,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    /* Initialize mTLS */
+    // Инициализация mTLS
     SSL_CTX *ctx = init_client_ssl_ctx();
     SSL *ssl = SSL_new(ctx);
     if (!ssl) {
@@ -536,31 +559,38 @@ int main(int argc, char *argv[]) {
 
     printf("mTLS handshake successful.\n");
 
-    /* Execute requested command */
-    char *cmd_str = argv[1];
+    // Выполнение команды
+    char *cmd_str = argv[arg_offset];
     int result = EXIT_FAILURE;
 
     if (strcmp(cmd_str, "upload") == 0) {
-        if (argc < 4) {
-            fprintf(stderr, "Usage: %s upload <local_filepath> <remote_filename> [recipient_fingerprint]\n", argv[0]);
-            return EXIT_FAILURE;
-        }
-
-    const char *recipient = (argc >= 5) ? argv[4] : "";
-    result = upload_file_ssl(ssl, argv[2], argv[3], recipient) ? EXIT_FAILURE : EXIT_SUCCESS;
-    } else if (strcmp(cmd_str, "download") == 0) {
-        if (argc < 4) {
-            fprintf(stderr, "Usage: %s download <remote_filename> <local_filepath>\n", argv[0]);
+        if (argc < arg_offset + 3) { // Требуется: <port> upload <local> <remote>
+            fprintf(stderr, "Usage: %s <port> upload <local_filepath> <remote_filename> [recipient_fingerprint]\n", argv[0]);
+            result = EXIT_FAILURE; // Устанавливаем результат ошибки
         } else {
-            result = download_file_ssl(ssl, argv[2], argv[3]) ? EXIT_FAILURE : EXIT_SUCCESS;
+            const char *recipient = (argc >= arg_offset + 4) ? argv[arg_offset + 3] : ""; // Проверяем, есть ли recipient
+            result = upload_file_ssl(ssl, argv[arg_offset + 1], argv[arg_offset + 2], recipient) ? EXIT_FAILURE : EXIT_SUCCESS;
+        }
+    } else if (strcmp(cmd_str, "download") == 0) {
+        if (argc < arg_offset + 3) { // Требуется: <port> download <remote> <local>
+            fprintf(stderr, "Usage: %s <port> download <remote_filename> <local_filepath>\n", argv[0]);
+            result = EXIT_FAILURE;
+        } else {
+            result = download_file_ssl(ssl, argv[arg_offset + 1], argv[arg_offset + 2]) ? EXIT_FAILURE : EXIT_SUCCESS;
         }
     } else if (strcmp(cmd_str, "list") == 0) {
-        result = list_files_ssl(ssl) ? EXIT_FAILURE : EXIT_SUCCESS;
+        if (argc != arg_offset + 1) { // argc должен быть ровно arg_offset + 1 (порт и команда)
+            fprintf(stderr, "Usage: %s <port> list\n", argv[0]);
+            result = EXIT_FAILURE;
+        } else {
+            result = list_files_ssl(ssl) ? EXIT_FAILURE : EXIT_SUCCESS;
+        }
     } else {
-        fprintf(stderr, "Unknown command: %s\n", cmd_str);
+        fprintf(stderr, "❌ Unknown command: %s\n", cmd_str);
+        result = EXIT_FAILURE;
     }
 
-    /* Cleanup */
+    // Очистка
     SSL_shutdown(ssl);
     SSL_free(ssl);
     SSL_CTX_free(ctx);

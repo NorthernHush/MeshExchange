@@ -31,6 +31,9 @@
 // Для форматированного вывода с переменным числом аргументов
 #include <stdarg.h>
 
+// для парсинга аргументов консоли
+#include <getopt.h>
+
 // Стандартные типы и IO
 #include <stdint.h>
 #include <stdio.h>
@@ -66,7 +69,8 @@
 #include "../lib/error.h"
 
 // Конфигурация
-#define PORT 5151 // порт, на котором слушает сервер
+// #define PORT 5151 // порт, на котором слушает сервер
+#define DEFAULT_PORT 5151  // дефолтный порт если параметр с терминала не отвечает или равен NULL
 #define BUFFER_SIZE 4096 // размер буфера для операций ввода-вывода
 #define MAX_KEY_LENGTH 32 // максимальная длина ключа (байты)
 #define LOG_FILE "/tmp/file-server.log" // файл для логов по умолчанию
@@ -105,6 +109,8 @@ static SSL_CTX *g_ssl_ctx = NULL;
 
 // Указатель на файл журнала. Открывается при запуске и закрывается при завершении работы.
 static FILE *g_log_file = NULL;
+
+
 
 
 // Структура для хранения контекста шифрования файлов.
@@ -1365,7 +1371,9 @@ void print_startup_logo(void) {
 
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    int server_port = 5151;
+
     // Инициализация компонентов
     if (!init_logging()) {
         return EXIT_FAILURE;
@@ -1401,8 +1409,27 @@ int main() {
         return EXIT_FAILURE;
     }
     
+    int opt;
+    while ((opt = getopt(argc, argv, "p:")) != -1) {
+        if (opt == 'p') {
+            char *endptr;
+            long port_num = strtol(optarg, &endptr, 10);
+            if (*endptr != '\0' || port_num <= 0 || port_num > 65535) {
+                fprintf(stderr, "❌ Ошибка: Неверный порт '%s'. Используйте число от 1 до 65535.\n", optarg);
+                cleanup_resources();
+                return EXIT_FAILURE;
+            }
+            server_port = (int)port_num;
+        } else {
+            fprintf(stderr, "💡 Использование: %s [-p порт]\n", argv[0]);
+            cleanup_resources();
+            return EXIT_FAILURE;
+        }
+    }
+
     // Создание сокета
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    
     if (server_fd == -1) {
         logger(LOG_ERROR, "Failed to create socket: %s", strerror(errno));
         cleanup_resources();
@@ -1410,7 +1437,6 @@ int main() {
     }
     
     // Настройка сокета
-    int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         logger(LOG_ERROR, "Failed to set socket options: %s", strerror(errno));
         close(server_fd);
@@ -1421,7 +1447,7 @@ int main() {
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
+    serv_addr.sin_port = htons(server_port);
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     
     // Привязка и прослушивание
@@ -1439,7 +1465,7 @@ int main() {
         return EXIT_FAILURE;
     }
     
-    logger(LOG_INFO, "Server listening on port %d", PORT);
+    logger(LOG_INFO, "Server listening on port %d", server_port);
     
     // Основной цикл
     while (!g_shutdown) {
