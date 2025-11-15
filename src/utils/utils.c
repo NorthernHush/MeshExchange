@@ -5,7 +5,13 @@
 #include <errno.h>
 #include <stdio.h>
 
+#include <pthread.h>
 
+#ifndef PTHREAD_MUTEX_INITIALIZER
+#define PTHREAD_MUTEX_INITIALIZER {0}
+#endif
+
+typedef struct ssl_st SSL;
 
 int send_all(int sockfd, const void *buffer, size_t len) {
     size_t total_sent = 0;

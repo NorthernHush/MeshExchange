@@ -104,7 +104,6 @@ async function buildClient() {
 	const pkgCflags = (await pkgConfig('--cflags libmongoc-1.0')) || '';
 	const pkgLibs = (await pkgConfig('--libs libmongoc-1.0')) || '';
 	const common = ['-Iinclude', `-I${BLAKE3_DIR}`, '-Wall', '-Wextra'];
-
 	const compile = [
 		['gcc', ['-c', 'src/client/client.c', '-o', 'client.o', ...common, ...pkgCflags.split(' ').filter(Boolean)]],
 		['gcc', ['-c', 'src/db/mongo_ops.c', '-o', 'mongo_ops.o', ...common, ...pkgCflags.split(' ').filter(Boolean)]],

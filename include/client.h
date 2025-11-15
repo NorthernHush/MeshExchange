@@ -8,7 +8,6 @@
 #define BUFFER_SIZE      4096
 #define BLAKE3_HASH_LEN  32 // 32 байта
 
-
 // Типы команд, согласованные с сервером
 typedef enum {
     CMD_UPLOAD,
@@ -30,7 +29,6 @@ typedef enum {
 // статусы
 #define FINGERPRINT_LEN 65
 
-// Статусы ответа от сервера
 typedef enum {
     RESP_SUCCESS,
     RESP_FAILURE,
@@ -38,15 +36,12 @@ typedef enum {
     RESP_PERMISSION_DENIED,
     RESP_ERROR,
     RESP_INVALID_OFFSET,
-    RESP_INTEGRITY_ERROR, 
-    RESP_UNKNOWN_COMMAND, 
-    RESP_WAITING_APPROVAL = 100, // Сервер ждёт подтверждения администратора
+    RESP_INTEGRITY_ERROR,
+    RESP_UNKNOWN_COMMAND,
+    RESP_WAITING_APPROVAL = 100, 
     RESP_APPROVED = 101,         // Подключение подтверждено
     RESP_REJECTED = 102          // Подключение отклонено
 } ResponseStatus;
-
-static int g_server_socket = -1;
-
 
 
 // Заголовок запроса от клиента к серверу
@@ -70,7 +65,7 @@ typedef struct {
 } ResponseHeader;
 
 
-// Объявления функциц
+// Объявления функций
 
 int send_all(int sockfd, const void *buffer, size_t len);
 int recv_all(int sockfd, void *buffer, size_t len);

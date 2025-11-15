@@ -52,6 +52,9 @@
 #include <unistd.h>
 #include <errno.h>
 
+// Glib
+#include <glib-2.0/glib.h>
+
 // MongoDB C driver и BSON
 #include <mongoc/mongoc.h>
 #include <bson/bson.h>
@@ -70,7 +73,7 @@
 
 // Конфигурация
 // #define PORT 5151 // порт, на котором слушает сервер
-#define DEFAULT_PORT 5151  // дефолтный порт если параметр с терминала не отвечает или равен NULL
+#define DEFAULT_PORT 6171  // дефолтный порт если параметр с терминала не отвечает или равен NULL
 #define BUFFER_SIZE 4096 // размер буфера для операций ввода-вывода
 #define MAX_KEY_LENGTH 32 // максимальная длина ключа (байты)
 #define LOG_FILE "/tmp/file-server.log" // файл для логов по умолчанию
@@ -112,6 +115,15 @@ static FILE *g_log_file = NULL;
 
 
 
+// Структура для хранения информации о клиенте, ожидающем подтверждения
+typedef struct {
+    SSL *ssl; // SSL-соединение с клиентом
+    char fingerprint[65]; // Его отпечаток
+    client_state_t *state_ref; // Указатель на его состояние в потоке
+    pthread_mutex_t *mutex_ref; // Указатель на мьютекс потока
+    pthread_cond_t *cond_ref; // Указатель на условную переменную потока
+} pending_client_info_t;
+
 
 // Структура для хранения контекста шифрования файлов.
 // Содержит 256-битный ключ (32 байта) и флаг инициализации.
@@ -131,6 +143,15 @@ typedef struct {
     SSL *ssl;                       // SSL-соединение с клиентом (для шифрования трафика)
     char fingerprint[65];           // SHA-256 отпечаток сертификата клиента в шестнадцатеричном виде (64 символа + '\0')
 } client_info_t;
+
+// Глобальный мьютекс для доступа к списку ожидающих
+static pthread_mutex_t pending_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Хеш-таблица для хранения ожидающих клиентов (ключ - отпечаток)
+static GHashTable *pending_clients = NULL;
+
+// Прототип
+void *admin_interface_thread(void *arg); 
 
 
 // Функция логирования: выводит сообщение одновременно в файл и в терминал (stderr).
@@ -1052,19 +1073,21 @@ cleanup:
 void *handle_client(void *arg) {
     client_info_t *info = (client_info_t *)arg;
     int client_fd = info->client_socket;
-    
-    // Создаем SSL объект
-    SSL *ssl = SSL_new(g_ssl_ctx);
+    SSL *ssl = NULL;
+    client_state_t state = CLIENT_STATE_WAITING_CONNECT;
+    char client_fingerprint[65] = {0};
+    pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t state_cond = PTHREAD_COND_INITIALIZER;
+
+    // SSL Setup
+    ssl = SSL_new(g_ssl_ctx);
     if (!ssl) {
         logger(LOG_ERROR, "Failed to create SSL object");
         close(client_fd);
         free(info);
         return NULL;
     }
-    
     SSL_set_fd(ssl, client_fd);
-    
-    // SSL handshake
     if (SSL_accept(ssl) <= 0) {
         logger(LOG_ERROR, "SSL handshake failed");
         ERR_print_errors_fp(stderr);
@@ -1073,66 +1096,134 @@ void *handle_client(void *arg) {
         free(info);
         return NULL;
     }
-    
-    // Получение клиентского сертификата
+
     X509 *client_cert = SSL_get_peer_certificate(ssl);
     if (!client_cert) {
         logger(LOG_ERROR, "No client certificate provided");
-        SSL_free(ssl);
-        close(client_fd);
-        free(info);
-        return NULL;
+        state = CLIENT_STATE_ERROR;
+    } else {
+        unsigned char cert_hash[SHA256_DIGEST_LENGTH];
+        X509_digest(client_cert, EVP_sha256(), cert_hash, NULL);
+        for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+            sprintf(&client_fingerprint[i*2], "%02x", cert_hash[i]);
+        }
+        client_fingerprint[64] = '\0';
+        X509_free(client_cert);
+        logger(LOG_INFO, "Client certificate fingerprint: %s", client_fingerprint);
     }
-    
-    // Вычисление отпечатка сертификата
-    unsigned char cert_hash[SHA256_DIGEST_LENGTH];
-    X509_digest(client_cert, EVP_sha256(), cert_hash, NULL);
-    
-    char client_fingerprint[65];
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        sprintf(&client_fingerprint[i*2], "%02x", cert_hash[i]);
-    }
-    client_fingerprint[64] = '\0';
-    
-    X509_free(client_cert);
-    
-    logger(LOG_INFO, "Client connected: %s:%d (fingerprint: %s)", inet_ntoa(info->client_addr.sin_addr), ntohs(info->client_addr.sin_port), client_fingerprint);
-    
-    // Обработка запросов
+
+    // Цикл обработки команд 
     RequestHeader req;
-    while (SSL_read(ssl, &req, sizeof(RequestHeader)) == sizeof(RequestHeader)) {
-        logger(LOG_DEBUG, "Received command: %d for file: %s", req.command, req.filename);
-        
-        switch(req.command) {
-            case CMD_UPLOAD:
-                logger(LOG_INFO, "Upload request for: %s (size: %lld)", req.filename, req.filesize);
-                handle_upload_request(ssl, &req, client_fingerprint);
+    while (state != CLIENT_STATE_ERROR && SSL_read(ssl, &req, sizeof(RequestHeader)) == sizeof(RequestHeader)) {
+        logger(LOG_DEBUG, "Received command: %d, Current state: %d", req.command, state);
+
+        switch (state) {
+            case CLIENT_STATE_WAITING_CONNECT:
+                if (req.command == CMD_CONNECT) {
+                    logger(LOG_INFO, "Client %s requested connection handshake.", client_fingerprint);
+                    state = CLIENT_STATE_WAITING_APPROVAL;
+
+                    // --- Добавляем клиента в список ожидающих ---
+                    pthread_mutex_lock(&pending_clients_mutex);
+                    pending_client_info_t *pending_info = malloc(sizeof(pending_client_info_t));
+                    if (!pending_info) {
+                        logger(LOG_ERROR, "Failed to allocate memory for pending client info");
+                        state = CLIENT_STATE_ERROR;
+                        pthread_mutex_unlock(&pending_clients_mutex);
+                        break;
+                    }
+                    pending_info->ssl = ssl;
+                    strcpy(pending_info->fingerprint, client_fingerprint);
+                    pending_info->state_ref = &state;
+                    pending_info->mutex_ref = &state_mutex;
+                    pending_info->cond_ref = &state_cond;
+
+                    g_hash_table_insert(pending_clients, g_strdup(client_fingerprint), pending_info);
+                    logger(LOG_INFO, "Client %s added to pending list.", client_fingerprint);
+                    pthread_mutex_unlock(&pending_clients_mutex);
+
+                    // Отправляем ACK клиенту 
+                    ResponseHeader ack_resp = { .status = RESP_WAITING_APPROVAL };
+                    if (ssl_send_all(ssl, &ack_resp, sizeof(ack_resp)) != 0) {
+                        logger(LOG_ERROR, "Failed to send waiting approval signal to client %s.", client_fingerprint);
+                        state = CLIENT_STATE_ERROR;
+                        break;
+                    }
+
+                    // Ждём подтверждения от администратора 
+                    pthread_mutex_lock(&state_mutex);
+                    while (state == CLIENT_STATE_WAITING_APPROVAL) {
+                        pthread_cond_wait(&state_cond, &state_mutex);
+                    }
+                    pthread_mutex_unlock(&state_mutex);
+
+                    // После пробуждения проверяем состояние 
+                    if (state == CLIENT_STATE_AUTHENTICATED) {
+                        logger(LOG_INFO, "Client %s was approved by admin.", client_fingerprint);
+                        ResponseHeader auth_resp = { .status = RESP_APPROVED };
+                        if (ssl_send_all(ssl, &auth_resp, sizeof(auth_resp)) != 0) {
+                             logger(LOG_ERROR, "Failed to send approval signal to client %s.", client_fingerprint);
+                             state = CLIENT_STATE_ERROR; // Ошибка при отправке подтверждения
+                             break;
+                        }
+                        // Удаляем из списка ожидания
+                        pthread_mutex_lock(&pending_clients_mutex);
+                        g_hash_table_remove(pending_clients, client_fingerprint);
+                        pthread_mutex_unlock(&pending_clients_mutex);
+                    } else { // state == CLIENT_STATE_ERROR или другое
+                        logger(LOG_INFO, "Client %s was rejected or error occurred.", client_fingerprint);
+                        ResponseHeader reject_resp = { .status = RESP_REJECTED };
+                        ssl_send_all(ssl, &reject_resp, sizeof(reject_resp));
+                        state = CLIENT_STATE_ERROR; // Установим ошибку, чтобы выйти из цикла
+                    }
+                } else {
+                    logger(LOG_WARNING, "Client %s sent command %d before CMD_CONNECT.", client_fingerprint, req.command);
+                    ResponseHeader resp = { .status = RESP_UNKNOWN_COMMAND };
+                    ssl_send_all(ssl, &resp, sizeof(resp));
+                }
                 break;
-                
-            case CMD_LIST:
-                logger(LOG_INFO, "List request");
-                handle_list_request(ssl, client_fingerprint);
+
+            case CLIENT_STATE_AUTHENTICATED:
+                // Обработка обычных команд
+                switch(req.command) {
+                    case CMD_UPLOAD:
+                        logger(LOG_INFO, "Upload request for: %s (size: %lld)", req.filename, req.filesize);
+                        handle_upload_request(ssl, &req, client_fingerprint);
+                        break;
+                    case CMD_LIST:
+                        logger(LOG_INFO, "List request from %s", client_fingerprint);
+                        handle_list_request(ssl, client_fingerprint);
+                        break;
+                    case CMD_DOWNLOAD:
+                        logger(LOG_INFO, "Download request for: %s (offset: %lld) from %s", req.filename, req.offset, client_fingerprint);
+                        handle_download_request(ssl, &req, client_fingerprint);
+                        break;
+                    default:
+                        logger(LOG_WARNING, "Unknown command: %d from authenticated client %s", req.command, client_fingerprint);
+                        ResponseHeader resp = { .status = RESP_UNKNOWN_COMMAND };
+                        ssl_send_all(ssl, &resp, sizeof(resp));
+                        break;
+                }
                 break;
-                
-            case CMD_DOWNLOAD:
-                logger(LOG_INFO, "Download request for: %s (offset: %lld)", req.filename, req.offset);
-                handle_download_request(ssl, &req, client_fingerprint);
-                break;
-                
+
             default:
-                logger(LOG_WARNING, "Unknown command: %d", req.command);
-                ResponseHeader resp = { .status = RESP_UNKNOWN_COMMAND };
-                ssl_send_all(ssl, &resp, sizeof(resp));
+                state = CLIENT_STATE_ERROR;
                 break;
         }
     }
-    
-    // Завершение соединения
+
+    // Удаление из списка ожидания при выходе, если всё ещё там 
+    pthread_mutex_lock(&pending_clients_mutex);
+    if (g_hash_table_remove(pending_clients, client_fingerprint)) {
+        logger(LOG_DEBUG, "Client %s removed from pending list on exit.", client_fingerprint);
+    }
+    pthread_mutex_unlock(&pending_clients_mutex);
+
+    // Завершение соединения 
     SSL_shutdown(ssl);
     SSL_free(ssl);
     close(client_fd);
     free(info);
-    
     logger(LOG_INFO, "Client disconnected: %s", client_fingerprint);
     return NULL;
 }
@@ -1371,127 +1462,74 @@ void print_startup_logo(void) {
 
 }
 
-int main(int argc, char* argv[]) {
-    int server_port = 5151;
+void print_select_options() {
 
-    // Инициализация компонентов
-    if (!init_logging()) {
-        return EXIT_FAILURE;
-    }
-    // Print animated startup logo to terminal
-    print_startup_logo();
-    // Показать прогресс загрузки модулей (визуальный эффект)
-    const char *modules[] = {"OpenSSL", "MongoDB", "Crypto", "Storage"};
-    print_module_loading(modules, sizeof(modules)/sizeof(modules[0]));
-    
-    if (!setup_signal_handlers()) {
-        cleanup_resources();
-        return EXIT_FAILURE;
-    }
-    
-    if (!init_ssl()) {
-        cleanup_resources();
-        return EXIT_FAILURE;
-    }
-    
-    if (!init_mongodb()) {
-        cleanup_resources();
-        return EXIT_FAILURE;
-    }
-    
-    if (!init_cryptography()) {
-        cleanup_resources();
-        return EXIT_FAILURE;
-    }
-    
-    if (!create_storage_dir()) {
-        cleanup_resources();
-        return EXIT_FAILURE;
-    }
-    
-    int opt;
-    while ((opt = getopt(argc, argv, "p:")) != -1) {
-        if (opt == 'p') {
-            char *endptr;
-            long port_num = strtol(optarg, &endptr, 10);
-            if (*endptr != '\0' || port_num <= 0 || port_num > 65535) {
-                fprintf(stderr, "❌ Ошибка: Неверный порт '%s'. Используйте число от 1 до 65535.\n", optarg);
-                cleanup_resources();
-                return EXIT_FAILURE;
-            }
-            server_port = (int)port_num;
-        } else {
-            fprintf(stderr, "💡 Использование: %s [-p порт]\n", argv[0]);
-            cleanup_resources();
-            return EXIT_FAILURE;
-        }
-    }
+    printf("\n You can select options!\n");
+    printf("1. Open Server\n");
+    printf("2. Off all clients\n");
+    printf("3. Check static client\n");
 
-    // Создание сокета
+
+}
+
+
+int open_server_function() {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    
     if (server_fd == -1) {
         logger(LOG_ERROR, "Failed to create socket: %s", strerror(errno));
-        cleanup_resources();
-        return EXIT_FAILURE;
+        return -1;
     }
-    
-    // Настройка сокета
+
+    int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         logger(LOG_ERROR, "Failed to set socket options: %s", strerror(errno));
         close(server_fd);
-        cleanup_resources();
-        return EXIT_FAILURE;
+        return -1;
     }
-    
+
     struct sockaddr_in serv_addr;
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(server_port);
+    serv_addr.sin_port = htons(DEFAULT_PORT);
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    
-    // Привязка и прослушивание
+
     if (bind(server_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         logger(LOG_ERROR, "Bind failed: %s", strerror(errno));
         close(server_fd);
-        cleanup_resources();
-        return EXIT_FAILURE;
+        return -1;
     }
-    
+
     if (listen(server_fd, MAX_USERS_LISTEN) < 0) {
         logger(LOG_ERROR, "Listen failed: %s", strerror(errno));
         close(server_fd);
-        cleanup_resources();
-        return EXIT_FAILURE;
+        return -1;
     }
-    
-    logger(LOG_INFO, "Server listening on port %d", server_port);
-    
-    // Основной цикл
+
+    logger(LOG_INFO, "Server opened on port %d", DEFAULT_PORT);
+
+    // Основной цикл сервера с обработкой глобального флага завершения
     while (!g_shutdown) {
         struct sockaddr_in client_addr;
         socklen_t client_len = sizeof(client_addr);
-        
         int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
         if (client_fd == -1) {
-            if (errno != EINTR) {
+            if (errno != EINTR && !g_shutdown) {
                 logger(LOG_ERROR, "Accept failed: %s", strerror(errno));
             }
             continue;
         }
-        
+
         client_info_t *info = malloc(sizeof(client_info_t));
         if (!info) {
             logger(LOG_ERROR, "Memory allocation failed for client info");
             close(client_fd);
             continue;
         }
-        
         info->client_socket = client_fd;
         info->client_addr = client_addr;
         info->ssl = NULL;
         memset(info->fingerprint, 0, sizeof(info->fingerprint));
-        
+
         pthread_t tid;
         if (pthread_create(&tid, NULL, handle_client, info) != 0) {
             logger(LOG_ERROR, "Failed to create client thread");
@@ -1499,14 +1537,186 @@ int main(int argc, char* argv[]) {
             close(client_fd);
             continue;
         }
-        
         pthread_detach(tid);
     }
-    
-    // Завершение работы
-    logger(LOG_INFO, "Server shutting down");
+
     close(server_fd);
-    cleanup_resources();
-    
-    return EXIT_SUCCESS;
+    return 0;
 }
+
+int off_users_all() {
+    logger(LOG_INFO, "Initiating shutdown for all clients via global shutdown flag");
+    g_shutdown = 1;
+    return 0;
+}
+
+
+int check_client_static() {
+    
+    printf("Server Status:");
+    printf("  Global shutdown flag: %s", g_shutdown ? "SET" : "NOT SET");
+    printf("  MongoDB connection: %s", g_mongo_client ? "ACTIVE" : "INACTIVE");
+    printf("  Crypto context: %s", g_file_crypto.initialized ? "INITIALIZED" : "NOT INITIALIZED");
+    return 0;
+}
+
+// --- Функция для цикла принятия клиентов ---
+int accept_clients_loop(int port) {
+    struct sockaddr_in address;
+    int opt = 1;
+    int addrlen = sizeof(address);
+    int new_socket;
+
+    // 1. Создание сокета
+    if ((g_server_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+        logger(LOG_ERROR, "❌ Не удалось создать серверный сокет: %s", strerror(errno));
+        return -1;
+    }
+
+    // 2. Настройка сокета (SO_REUSEADDR)
+    if (setsockopt(g_server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+        logger(LOG_ERROR, "❌ Не удалось настроить серверный сокет (SO_REUSEADDR): %s", strerror(errno));
+        close(g_server_socket);
+        g_server_socket = -1;
+        return -1;
+    }
+
+    // 3. Привязка к порту
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY; // Принимать соединения на любом интерфейсе
+    address.sin_port = htons(port);
+
+    if (bind(g_server_socket, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        logger(LOG_ERROR, "❌ Не удалось привязать серверный сокет к порту %d: %s", port, strerror(errno));
+        close(g_server_socket);
+        g_server_socket = -1;
+        return -1;
+    }
+
+    // 4. Прослушивание
+    if (listen(g_server_socket, MAX_USERS_LISTEN) < 0) {
+        logger(LOG_ERROR, "❌ Не удалось начать прослушивание: %s", strerror(errno));
+        close(g_server_socket);
+        g_server_socket = -1;
+        return -1;
+    }
+
+    logger(LOG_INFO, "✅ Сервер слушает на порту %d", port);
+
+    // 5. Цикл принятия клиентов
+    while (!g_shutdown) { // Используем глобальный флаг из signal_handler
+        logger(LOG_DEBUG, "⏳ Ожидание нового соединения...");
+        if ((new_socket = accept(g_server_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
+            if (g_shutdown) {
+                logger(LOG_INFO, "🛑 Получен сигнал завершения. Выход из цикла accept.");
+                break; // Прерываем цикл, если установлен флаг завершения
+            }
+            logger(LOG_ERROR, "❌ Ошибка при accept(): %s", strerror(errno));
+            continue; // Продолжаем цикл, если не сигнал завершения
+        }
+
+        logger(LOG_INFO, "✅ Принято соединение от %s:%d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+
+        // 6. Подготовка информации о клиенте для передачи в поток
+        client_info_t *client_info = malloc(sizeof(client_info_t));
+        if (!client_info) {
+            logger(LOG_ERROR, "❌ Не удалось выделить память для информации о клиенте");
+            close(new_socket); // Закрываем сокет, если не удалось создать структуру
+            continue; // Продолжаем цикл
+        }
+        client_info->client_socket = new_socket;
+        client_info->client_addr = address; // Копируем адрес клиента
+
+        // 7. Создание потока для обработки клиента
+        pthread_t client_thread;
+        if (pthread_create(&client_thread, NULL, handle_client, (void*)client_info) != 0) {
+            logger(LOG_ERROR, "❌ Не удалось создать поток для клиента %s:%d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+            close(new_socket); // Закрываем сокет, если не удалось создать поток
+            free(client_info); // Освобождаем выделенную память
+            continue; // Продолжаем цикл
+        }
+
+        // 8. Отделяем поток (он завершится сам)
+        pthread_detach(client_thread);
+        logger(LOG_DEBUG, "🧵 Поток для клиента %s:%d запущен и отделен.", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+    }
+
+    logger(LOG_INFO, "📢 Цикл принятия соединений завершен.");
+    return 0;
+}
+// точка входа
+int main(int argc, char* argv[]) {
+    int server_port = DEFAULT_PORT;
+
+    if (!init_logging()) {
+        return EXIT_FAILURE;
+    }
+    print_startup_logo();
+    const char *modules[] = {"OpenSSL", "MongoDB", "Crypto", "Storage", "Pending Clients Table"};
+    print_module_loading(modules, sizeof(modules)/sizeof(modules[0]));
+    if (!setup_signal_handlers()) {
+        cleanup_resources();
+        return EXIT_FAILURE;
+    }
+    if (!init_ssl()) {
+        cleanup_resources();
+        return EXIT_FAILURE;
+    }
+    if (!init_mongodb()) {
+        cleanup_resources();
+        return EXIT_FAILURE;
+    }
+    if (!init_cryptography()) {
+        cleanup_resources();
+        return EXIT_FAILURE;
+    }
+    if (!create_storage_dir()) {
+        cleanup_resources();
+        return EXIT_FAILURE;
+    }
+
+    // --- Инициализация хеш-таблицы ожидающих клиентов ---
+    pending_clients = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+    if (!pending_clients) {
+        logger(LOG_ERROR, "Failed to create pending clients hash table.");
+        cleanup_resources();
+        return EXIT_FAILURE;
+    }
+
+    int opt;
+    while ((opt = getopt(argc, argv, "p:")) != -1) {
+        if (opt == 'p') {
+            char *endptr;
+            long port_num = strtol(optarg, &endptr, 10);
+            if (*endptr != '\0' || port_num <= 0 || port_num > 65535) {
+                fprintf(stderr, "Ошибка: Неверный порт '%s'. Используйте число от 1 до 65535.", optarg);
+                cleanup_resources();
+                return EXIT_FAILURE;
+            }
+            server_port = (int)port_num;
+        } else {
+            fprintf(stderr, "Использование: %s [-p порт]", argv[0]);
+            cleanup_resources();
+            return EXIT_FAILURE;
+        }
+    }
+
+    // --- Запуск потока администратора ---
+    pthread_t admin_thread;
+    if (pthread_create(&admin_thread, NULL, admin_interface_thread, NULL) != 0) {
+        logger(LOG_ERROR, "Failed to create admin interface thread.");
+        cleanup_resources();
+        return EXIT_FAILURE;
+    }
+    pthread_detach(admin_thread);
+
+    // --- Запуск цикла принятия клиентов ---
+    logger(LOG_INFO, "Запуск сервера на порту %d...", server_port);
+    if (accept_clients_loop(server_port) != 0) {
+        logger(LOG_ERROR, "❌ Ошибка при запуске цикла принятия соединений.");
+        cleanup_resources();
+        return EXIT_FAILURE;
+    }
+
+    cleanup_resources();
+    return EXIT_SUCCESS;
