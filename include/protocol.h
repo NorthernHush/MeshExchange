@@ -64,7 +64,8 @@ typedef enum {
     RESP_ENCRYPTION_ERROR = 54, // Encryption/decryption error
     RESP_WAITING_APPROVAL = 100, // Waiting for admin approval
     RESP_APPROVED = 101,         // Connection approved
-    RESP_REJECTED = 102          // Connection rejected
+    RESP_REJECTED = 102,         // Connection rejected
+    RESP_BANNED = 103            // Client is banned
 } ResponseStatus;
 
 // ECDH key exchange structures

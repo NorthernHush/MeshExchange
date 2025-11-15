@@ -86,6 +86,9 @@ static transfer_info_t g_transfer_info;
 static struct bufferevent *g_bev = NULL;
 static SSL_CTX *g_ssl_ctx = NULL;
 static volatile sig_atomic_t g_shutdown = 0;
+static char g_server_ip[256] = "127.0.0.1";
+static int g_port = DEFAULT_PORT;
+static char g_upload_file[256] = "";
 
 // UI functions
 static void init_ui(void) {
@@ -201,6 +204,14 @@ static SSL_CTX *init_ssl_context(void) {
         return NULL;
     }
 
+    // Load CA certificate for server verification
+    if (SSL_CTX_load_verify_locations(ctx, "src/ca.pem", NULL) <= 0) {
+        SSL_CTX_free(ctx);
+        return NULL;
+    }
+
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+
     return ctx;
 }
 
@@ -269,10 +280,27 @@ static void read_cb(struct bufferevent *bev, void *ctx) {
 
                 if (resp.status == RESP_SUCCESS) {
                     update_status("Command executed successfully");
+                } else if (resp.status == RESP_FILE_NOT_FOUND) {
+                    update_status("File not found");
+                } else if (resp.status == RESP_PERMISSION_DENIED) {
+                    update_status("Permission denied");
+                } else if (resp.status == RESP_ENCRYPTION_ERROR) {
+                    update_status("Encryption error");
+                } else if (resp.status == RESP_ERROR) {
+                    update_status("Server error");
+                } else if (resp.status == RESP_BANNED) {
+                    update_status("ИДИ НАХУЙ - You are banned!");
                 } else {
                     update_status("Command failed");
                 }
             }
+            break;
+        }
+        case STATE_TRANSFERRING: {
+            // Handle file transfer data here if needed
+            // For now, just drain the buffer to prevent accumulation
+            size_t len = evbuffer_get_length(input);
+            evbuffer_drain(input, len);
             break;
         }
         default:
@@ -366,8 +394,8 @@ static void ui_loop(void) {
                 struct sockaddr_in sin;
                 memset(&sin, 0, sizeof(sin));
                 sin.sin_family = AF_INET;
-                sin.sin_port = htons(DEFAULT_PORT);
-                inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr);
+                sin.sin_port = htons(g_port);
+                inet_pton(AF_INET, g_server_ip, &sin.sin_addr);
 
                 g_bev = bufferevent_openssl_socket_new(
                     event_base_new(), -1, SSL_new(g_ssl_ctx),
@@ -382,11 +410,15 @@ static void ui_loop(void) {
                     g_client_state = STATE_CONNECTING;
                     update_status("Connecting...");
                 }
+            } else {
+                update_status("Already connected or connecting...");
             }
         } else if (ch == 'u' || ch == 'U') {
             if (g_client_state == STATE_AUTHENTICATED) {
                 // Simple upload command
                 upload_file("test.txt", "uploaded_test.txt", NULL);
+            } else {
+                update_status("Not connected to server. Press 'c' to connect first.");
             }
         }
     }
@@ -399,6 +431,30 @@ static void signal_handler(int sig) {
 
 // Main function
 int main(int argc, char *argv[]) {
+
+    // Parse arguments with getopt
+    int opt;
+    while ((opt = getopt(argc, argv, "s:p:f:")) != -1) {
+        switch (opt) {
+            case 's':
+                strcpy(g_server_ip, optarg);
+                break;
+            case 'p':
+                g_port = atoi(optarg);
+                if (g_port <= 0 || g_port > 65535) {
+                    fprintf(stderr, "Invalid port: %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                break;
+            case 'f':
+                strcpy(g_upload_file, optarg);
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-s server_ip] [-p port] [-f upload_file]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+    }
+
     // Initialize libsodium
     if (sodium_init() < 0) {
         fprintf(stderr, "Failed to initialize libsodium\n");

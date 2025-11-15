@@ -33,6 +33,7 @@
 #include "../../include/protocol.h"
 #include "../crypto/crypto_session.h"
 #include "../db/mongo_ops_server.h"
+#include "admin_panel.h"
 
 // Server configuration
 #define DEFAULT_PORT 1512
@@ -45,6 +46,16 @@
 #define COLLECTION_NAME "file_groups"
 #define MAX_FILE_SIZE (1024LL * 1024LL * 1024LL) // 1GB
 
+// Connection state
+typedef enum {
+    CONN_STATE_DISCONNECTED,
+    CONN_STATE_ECDH_INIT,
+    CONN_STATE_ECDH_RESPONSE,
+    CONN_STATE_SESSION_KEY,
+    CONN_STATE_AUTHENTICATED,
+    CONN_STATE_TRANSFERRING
+} connection_state_t;
+
 // Connection context
 typedef struct {
     struct bufferevent *bev;
@@ -52,8 +63,9 @@ typedef struct {
     crypto_session_t crypto_session;
     char client_ip[INET_ADDRSTRLEN];
     char fingerprint[FINGERPRINT_LEN];
+    char session_key_hex[65]; // Hex-encoded session key for admin panel
     time_t connected_at;
-    int authenticated;
+    connection_state_t state;
     GHashTable *pending_data; // For partial transfers
 } connection_t;
 
@@ -156,6 +168,13 @@ static SSL_CTX *init_ssl_context(void) {
         return NULL;
     }
 
+    // Load CA certificate for client verification
+    if (SSL_CTX_load_verify_locations(ctx, "src/ca.pem", NULL) <= 0) {
+        secure_log("ERROR", "Failed to load CA certificate");
+        SSL_CTX_free(ctx);
+        return NULL;
+    }
+
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
     return ctx;
 }
@@ -219,6 +238,9 @@ static void handle_ecdh_init(connection_t *conn, const ECDHInitPacket *packet) {
 
     // Send response
     bufferevent_write(conn->bev, &response, sizeof(response));
+
+    // Move to next state
+    conn->state = CONN_STATE_ECDH_RESPONSE;
 }
 
 // Handle session key establishment
@@ -235,9 +257,33 @@ static void handle_session_key(connection_t *conn, const SessionKeyPacket *packe
         return;
     }
 
+    // Check if client is banned
+    char session_key_hex[65];
+    sodium_bin2hex(session_key_hex, sizeof(session_key_hex),
+                   packet->session_key, SESSION_KEY_LEN);
+
+    if (admin_is_client_banned(session_key_hex)) {
+        secure_log("WARNING", "Banned client attempted connection: %s", conn->client_ip);
+
+        // Send ban message
+        const char *ban_message = admin_get_ban_message(session_key_hex);
+        ResponseHeader resp = { .status = RESP_BANNED };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+
+        // Send ban message if available
+        if (ban_message) {
+            bufferevent_write(conn->bev, ban_message, strlen(ban_message));
+        }
+
+        return;
+    }
+
+    // Store session key for admin panel
+    strcpy(conn->session_key_hex, session_key_hex);
+
     // Session established
-    conn->authenticated = 1;
-    secure_log("INFO", "Session established for %s", conn->client_ip);
+    conn->state = CONN_STATE_AUTHENTICATED;
+    secure_log("INFO", "Session established for %s (key: %.16s...)", conn->client_ip, session_key_hex);
 
     // Send success response
     ResponseHeader resp = { .status = RESP_SUCCESS };
@@ -246,7 +292,7 @@ static void handle_session_key(connection_t *conn, const SessionKeyPacket *packe
 
 // Handle file upload
 static void handle_upload(connection_t *conn, const RequestHeader *req) {
-    if (!conn->authenticated) {
+    if (conn->state != CONN_STATE_AUTHENTICATED) {
         ResponseHeader resp = { .status = RESP_AUTH_FAILED };
         bufferevent_write(conn->bev, &resp, sizeof(resp));
         return;
@@ -273,14 +319,168 @@ static void handle_upload(connection_t *conn, const RequestHeader *req) {
         return;
     }
 
+    // Create storage directory if needed
+    if (mkdir(STORAGE_DIR, 0755) == -1 && errno != EEXIST) {
+        secure_log("ERROR", "Failed to create storage directory");
+        ResponseHeader resp = { .status = RESP_ERROR };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
+    // Create full path
+    char filepath[PATH_MAX];
+    snprintf(filepath, sizeof(filepath), "%s/%s", STORAGE_DIR, filename);
+
+    // Check if file already exists
+    if (access(filepath, F_OK) == 0) {
+        ResponseHeader resp = { .status = RESP_PERMISSION_DENIED };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
+    // Open file for writing
+    FILE *fp = fopen(filepath, "wb");
+    if (!fp) {
+        secure_log("ERROR", "Failed to open file %s for writing", filepath);
+        ResponseHeader resp = { .status = RESP_ERROR };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
     // Send OK to start transfer
     ResponseHeader resp = { .status = RESP_SUCCESS };
     bufferevent_write(conn->bev, &resp, sizeof(resp));
 
-    // Set up for receiving file data
-    // This would be implemented with bufferevent read callbacks
-    // For now, just log
+    // Set connection to transferring state
+    conn->state = CONN_STATE_TRANSFERRING;
+
+    // Store file info in pending data
+    GHashTable *file_info = g_hash_table_new(g_str_hash, g_str_equal);
+    g_hash_table_insert(file_info, "fp", fp);
+    g_hash_table_insert(file_info, "filesize", (gpointer)filesize);
+    g_hash_table_insert(file_info, "received", (gpointer)0LL);
+    g_hash_table_insert(file_info, "filename", g_strdup(filename));
+
+    g_hash_table_insert(conn->pending_data, "upload", file_info);
+
     secure_log("INFO", "Upload initiated: %s (%lld bytes) from %s", filename, filesize, conn->client_ip);
+}
+
+// Handle file download
+static void handle_download(connection_t *conn, const RequestHeader *req) {
+    if (conn->state != CONN_STATE_AUTHENTICATED) {
+        ResponseHeader resp = { .status = RESP_AUTH_FAILED };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
+    // Decrypt metadata to get filename
+    char filename[FILENAME_MAX_LEN];
+    long long dummy_filesize;
+    char dummy_recipient[FINGERPRINT_LEN];
+
+    if (crypto_session_decrypt_metadata(&conn->crypto_session, &req->metadata,
+                                       filename, &dummy_filesize, dummy_recipient) != 0) {
+        secure_log("ERROR", "Failed to decrypt metadata for download from %s", conn->client_ip);
+        ResponseHeader resp = { .status = RESP_ENCRYPTION_ERROR };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
+    // Validate filename
+    if (strstr(filename, "..") || strchr(filename, '/') || strlen(filename) == 0) {
+        ResponseHeader resp = { .status = RESP_PERMISSION_DENIED };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
+    // Create full path
+    char filepath[PATH_MAX];
+    snprintf(filepath, sizeof(filepath), "%s/%s", STORAGE_DIR, filename);
+
+    // Check if file exists and get size
+    struct stat st;
+    if (stat(filepath, &st) != 0) {
+        ResponseHeader resp = { .status = RESP_FILE_NOT_FOUND };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
+    long long filesize = st.st_size;
+
+    // Open file for reading
+    FILE *fp = fopen(filepath, "rb");
+    if (!fp) {
+        secure_log("ERROR", "Failed to open file %s for reading", filepath);
+        ResponseHeader resp = { .status = RESP_ERROR };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
+    // Send response with file size
+    ResponseHeader resp = { .status = RESP_SUCCESS, .filesize = filesize };
+    bufferevent_write(conn->bev, &resp, sizeof(resp));
+
+    // Set connection to transferring state
+    conn->state = CONN_STATE_TRANSFERRING;
+
+    // Store file info in pending data
+    GHashTable *file_info = g_hash_table_new(g_str_hash, g_str_equal);
+    g_hash_table_insert(file_info, "fp", fp);
+    g_hash_table_insert(file_info, "filesize", (gpointer)filesize);
+    g_hash_table_insert(file_info, "sent", (gpointer)0LL);
+    g_hash_table_insert(file_info, "filename", g_strdup(filename));
+
+    g_hash_table_insert(conn->pending_data, "download", file_info);
+
+    secure_log("INFO", "Download initiated: %s (%lld bytes) to %s", filename, filesize, conn->client_ip);
+}
+
+// Handle file list
+static void handle_list(connection_t *conn, const RequestHeader *req) {
+    if (conn->state != CONN_STATE_AUTHENTICATED) {
+        ResponseHeader resp = { .status = RESP_AUTH_FAILED };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
+    // Open storage directory
+    DIR *dir = opendir(STORAGE_DIR);
+    if (!dir) {
+        secure_log("ERROR", "Failed to open storage directory");
+        ResponseHeader resp = { .status = RESP_ERROR };
+        bufferevent_write(conn->bev, &resp, sizeof(resp));
+        return;
+    }
+
+    // Collect file list
+    GString *file_list = g_string_new("");
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_REG) { // Regular files only
+            struct stat st;
+            char filepath[PATH_MAX];
+            snprintf(filepath, sizeof(filepath), "%s/%s", STORAGE_DIR, entry->d_name);
+
+            if (stat(filepath, &st) == 0) {
+                g_string_append_printf(file_list, "%s\t%lld\n", entry->d_name, (long long)st.st_size);
+            }
+        }
+    }
+    closedir(dir);
+
+    long long list_size = file_list->len;
+
+    // Send response with list size
+    ResponseHeader resp = { .status = RESP_SUCCESS, .filesize = list_size };
+    bufferevent_write(conn->bev, &resp, sizeof(resp));
+
+    // Send file list data
+    if (list_size > 0) {
+        bufferevent_write(conn->bev, file_list->str, list_size);
+    }
+
+    g_string_free(file_list, TRUE);
 }
 
 // Main request handler
@@ -303,10 +503,10 @@ static void handle_request(connection_t *conn, const RequestHeader *req) {
             handle_upload(conn, req);
             break;
         case CMD_DOWNLOAD:
-            // Implement download
+            handle_download(conn, req);
             break;
         case CMD_LIST:
-            // Implement list
+            handle_list(conn, req);
             break;
         case CMD_PING:
             // Keep-alive
@@ -327,15 +527,145 @@ static void read_cb(struct bufferevent *bev, void *ctx) {
     struct evbuffer *input = bufferevent_get_input(bev);
 
     size_t len = evbuffer_get_length(input);
-    if (len < sizeof(RequestHeader)) return;
 
-    RequestHeader req;
-    if (evbuffer_remove(input, &req, sizeof(RequestHeader)) != sizeof(RequestHeader)) {
-        secure_log("ERROR", "Failed to read request header from %s", conn->client_ip);
-        return;
+    // Handle different packet types based on state
+    switch (conn->state) {
+        case CONN_STATE_ECDH_INIT: {
+            if (len < sizeof(ECDHInitPacket)) return;
+            ECDHInitPacket packet;
+            if (evbuffer_remove(input, &packet, sizeof(ECDHInitPacket)) != sizeof(ECDHInitPacket)) {
+                secure_log("ERROR", "Failed to read ECDH init packet from %s", conn->client_ip);
+                return;
+            }
+            handle_ecdh_init(conn, &packet);
+            break;
+        }
+        case CONN_STATE_ECDH_RESPONSE: {
+            if (len < sizeof(SessionKeyPacket)) return;
+            SessionKeyPacket packet;
+            if (evbuffer_remove(input, &packet, sizeof(SessionKeyPacket)) != sizeof(SessionKeyPacket)) {
+                secure_log("ERROR", "Failed to read session key packet from %s", conn->client_ip);
+                return;
+            }
+            handle_session_key(conn, &packet);
+            break;
+        }
+        case CONN_STATE_AUTHENTICATED: {
+            if (len < sizeof(RequestHeader)) return;
+            RequestHeader req;
+            if (evbuffer_remove(input, &req, sizeof(RequestHeader)) != sizeof(RequestHeader)) {
+                secure_log("ERROR", "Failed to read request header from %s", conn->client_ip);
+                return;
+            }
+            handle_request(conn, &req);
+            break;
+        }
+        case CONN_STATE_TRANSFERRING: {
+            // Check if this is upload or download
+            GHashTable *upload_info = g_hash_table_lookup(conn->pending_data, "upload");
+            GHashTable *download_info = g_hash_table_lookup(conn->pending_data, "download");
+
+            if (upload_info) {
+                // Handle upload data
+                FILE *fp = g_hash_table_lookup(upload_info, "fp");
+                long long filesize = (long long)g_hash_table_lookup(upload_info, "filesize");
+                long long received = (long long)g_hash_table_lookup(upload_info, "received");
+
+                if (!fp) {
+                    secure_log("ERROR", "No file pointer for upload from %s", conn->client_ip);
+                    evbuffer_drain(input, len);
+                    return;
+                }
+
+                // Read available data
+                size_t to_read = len;
+                if (received + to_read > filesize) {
+                    to_read = filesize - received;
+                }
+
+                if (to_read > 0) {
+                    char buffer[BUFFER_SIZE];
+                    size_t actually_read = evbuffer_remove(input, buffer, to_read);
+                    size_t written = fwrite(buffer, 1, actually_read, fp);
+                    if (written != actually_read) {
+                        secure_log("ERROR", "Failed to write file data for %s", conn->client_ip);
+                        fclose(fp);
+                        g_hash_table_remove(conn->pending_data, "upload");
+                        conn->state = CONN_STATE_AUTHENTICATED;
+                        return;
+                    }
+                    received += written;
+                    g_hash_table_insert(upload_info, "received", (gpointer)received);
+                }
+
+                // Check if upload complete
+                if (received >= filesize) {
+                    fclose(fp);
+                    char *filename = g_hash_table_lookup(upload_info, "filename");
+                    secure_log("INFO", "Upload completed: %s (%lld bytes) from %s", filename, filesize, conn->client_ip);
+
+                    // Send completion response
+                    ResponseHeader resp = { .status = RESP_SUCCESS };
+                    bufferevent_write(conn->bev, &resp, sizeof(resp));
+
+                    g_hash_table_remove(conn->pending_data, "upload");
+                    conn->state = CONN_STATE_AUTHENTICATED;
+                }
+            } else if (download_info) {
+                // Handle download - send file data
+                FILE *fp = g_hash_table_lookup(download_info, "fp");
+                long long filesize = (long long)g_hash_table_lookup(download_info, "filesize");
+                long long sent = (long long)g_hash_table_lookup(download_info, "sent");
+
+                if (!fp) {
+                    secure_log("ERROR", "No file pointer for download to %s", conn->client_ip);
+                    g_hash_table_remove(conn->pending_data, "download");
+                    conn->state = CONN_STATE_AUTHENTICATED;
+                    return;
+                }
+
+                // Send file data in chunks
+                size_t to_send = BUFFER_SIZE;
+                if (sent + to_send > filesize) {
+                    to_send = filesize - sent;
+                }
+
+                if (to_send > 0) {
+                    char buffer[BUFFER_SIZE];
+                    size_t read_bytes = fread(buffer, 1, to_send, fp);
+                    if (read_bytes > 0) {
+                        bufferevent_write(conn->bev, buffer, read_bytes);
+                        sent += read_bytes;
+                        g_hash_table_insert(download_info, "sent", (gpointer)sent);
+                    } else {
+                        secure_log("ERROR", "Failed to read file data for %s", conn->client_ip);
+                        fclose(fp);
+                        g_hash_table_remove(conn->pending_data, "download");
+                        conn->state = CONN_STATE_AUTHENTICATED;
+                        return;
+                    }
+                }
+
+                // Check if download complete
+                if (sent >= filesize) {
+                    fclose(fp);
+                    char *filename = g_hash_table_lookup(download_info, "filename");
+                    secure_log("INFO", "Download completed: %s (%lld bytes) to %s", filename, filesize, conn->client_ip);
+
+                    g_hash_table_remove(conn->pending_data, "download");
+                    conn->state = CONN_STATE_AUTHENTICATED;
+                }
+            } else {
+                secure_log("ERROR", "No transfer info found for transferring connection %s", conn->client_ip);
+                evbuffer_drain(input, len);
+            }
+            break;
+        }
+        default:
+            // Drain buffer to prevent accumulation
+            evbuffer_drain(input, len);
+            break;
     }
-
-    handle_request(conn, &req);
 }
 
 static void event_cb(struct bufferevent *bev, short events, void *ctx) {
@@ -352,6 +682,9 @@ static void event_cb(struct bufferevent *bev, short events, void *ctx) {
 
     // Cleanup connection
     crypto_session_cleanup(&conn->crypto_session);
+    if (conn->pending_data) {
+        g_hash_table_destroy(conn->pending_data);
+    }
     bufferevent_free(bev);
     g_hash_table_remove(g_connections, conn);
     free(conn);
@@ -395,7 +728,8 @@ static void accept_cb(struct evconnlistener *listener, evutil_socket_t fd,
     conn->base = base;
     strcpy(conn->client_ip, ip);
     conn->connected_at = time(NULL);
-    conn->authenticated = 0;
+    conn->state = CONN_STATE_ECDH_INIT;
+    conn->pending_data = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_hash_table_destroy);
 
     // Set callbacks
     bufferevent_setcb(bev, read_cb, NULL, event_cb, conn);
@@ -420,9 +754,21 @@ static void signal_cb(evutil_socket_t sig, short events, void *ctx) {
 int main(int argc, char *argv[]) {
     int port = DEFAULT_PORT;
 
-    // Parse arguments
-    if (argc > 1) {
-        port = atoi(argv[1]);
+    // Parse arguments with getopt
+    int opt;
+    while ((opt = getopt(argc, argv, "p:")) != -1) {
+        switch (opt) {
+            case 'p':
+                port = atoi(optarg);
+                if (port <= 0 || port > 65535) {
+                    fprintf(stderr, "Invalid port: %s\n", optarg);
+                    return EXIT_FAILURE;
+                }
+                break;
+            default:
+                fprintf(stderr, "Usage: %s [-p port]\n", argv[0]);
+                return EXIT_FAILURE;
+        }
     }
 
     // Initialize libsodium

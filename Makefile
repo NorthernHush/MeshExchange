@@ -33,7 +33,7 @@ LDFLAGS += $(LIBSODIUM_LDFLAGS) $(LIBEVENT_LDFLAGS) $(NCURSES_LDFLAGS) $(OPENSSL
 
 # Source files
 CLIENT_SRC = src/client/client_new.c
-SERVER_SRC = src/server/server_new.c src/db/mongo_ops_server.c
+SERVER_SRC = src/server/server_new.c src/db/mongo_ops_server.c src/server/admin_panel.c
 CRYPTO_SRC = src/crypto/crypto_session.c
 UTILS_SRC = src/utils/utils.c
 
@@ -66,7 +66,7 @@ bin:
 
 # Clean
 clean:
-	rm -f src/client/client_new.o src/crypto/crypto_session.o src/utils/utils.o src/server/server_new.o bin/client bin/server
+	rm -f src/client/client_new.o src/crypto/crypto_session.o src/utils/utils.o src/server/server_new.o src/db/mongo_ops_server.o src/server/admin_panel.o bin/client bin/server
 
 # Install dependencies (Ubuntu/Debian)
 install-deps:
