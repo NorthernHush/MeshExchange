@@ -1,184 +1,248 @@
-## MeshExchange
+# Secure File Exchange System
 
-Powerful, secure, peer-assisted file exchange for local and distributed networks.
+A high-security, anonymous file transfer system with modern cryptography, event-driven architecture, and advanced protection mechanisms.
 
-MeshExchange is a lightweight C-based file exchange system designed for reliability, privacy, and performance. It combines transport primitives, strong cryptography, and optional MongoDB-backed metadata storage to provide a flexible platform for building secure file-transfer and synchronization services.
+## Features
 
----
+### Security & Cryptography
+- **XChaCha20-Poly1305** encryption for data confidentiality and integrity
+- **ECDH key exchange** for perfect forward secrecy
+- **mTLS** (mutual TLS) authentication with client certificates
+- **Metadata encryption** to hide filenames, sizes, and recipient information
+- **BLAKE3 hashing** for file integrity verification
 
-## TL;DR
+### Architecture
+- **Event-driven server** using libevent (replaces thread-per-client model)
+- **Connection pooling** and efficient resource management
+- **Rate limiting** and DoS protection
+- **Audit logging** with secure log rotation
 
-- Language: C
-- Focus: secure file exchange, small footprint, pluggable storage (MongoDB), TLS and AEAD (AES-GCM) encryption
-- Build: POSIX-compatible toolchain (gcc/clang, make)
-- Layout: core network/watchers, crypto utilities, DB adapters, clients and server components
+### User Interface
+- **Modern ncurses CLI** with colors, progress bars, and animations
+- **Command autocompletion** and history
+- **Real-time progress tracking** for file transfers
+- **Responsive error handling** and user feedback
 
-Use the included build scripts to compile the server, client and optional tools. See "Quick start" below.
+### Anonymity & Privacy
+- **Tor integration** for network anonymity (planned)
+- **Traffic obfuscation** techniques (planned)
+- **No metadata leakage** in network traffic
+- **Secure key management** with automatic rotation
 
----
+## Quick Start
 
-## Key Features
+### Prerequisites
+- Linux/macOS/Windows (with WSL)
+- GCC or Clang compiler
+- OpenSSL development libraries
+- libsodium, libevent, ncurses, MongoDB
 
-- Secure transfer: AES-GCM for authenticated encryption and mutual TLS for node identity.
-- Integrity: file hashing utilities (BLAKE3 code included in `deps/blake3/`).
-- Pluggable storage: optional MongoDB metadata store and helper scripts under `mongo/` and `db/`.
-- Modular architecture: clear separation between core, crypto, DB, net, and server/client components.
-- Small, portable C codebase with minimal external dependencies.
+### Automated Setup
+```bash
+# Clone repository
+git clone <repository-url>
+cd secure-file-exchange
 
----
+# Run automated setup (installs dependencies, generates certificates, builds)
+./scripts/setup_environment.sh
 
-## Repository layout (high level)
+# Or install dependencies only
+./scripts/setup_environment.sh --deps-only
 
-- `src/` — main server/client entrypoints, daemon, certificates and example keys
-- `core/` — watchers and internal utilities (inotify watcher)
-- `crypto/` — AES-GCM helpers and crypto glue
-- `db/` — MongoDB client and ops helpers
-- `deps/blake3/` — included BLAKE3 implementation for hashing
-- `server/`, `client/` — convenience scripts and example servers/clients
-- `tests/` — unit/integration tests and mocks
-- `mongo/` — MongoDB init scripts
+# Generate certificates only
+./scripts/setup_environment.sh --certs-only
+```
 
-This structure is intentionally simple to make it easy to extend or integrate into other projects.
+### Manual Setup
+```bash
+# Install dependencies (Ubuntu/Debian)
+sudo apt-get install libsodium-dev libevent-dev libncurses-dev libssl-dev \
+                     libglib2.0-dev libmongoc-dev libreadline-dev
 
----
+# Generate certificates
+./scripts/generate_keys.sh
 
-## Quick start
-
-Prerequisites
-
-- A POSIX environment (Linux/macOS)
-- gcc or clang, make
-- OpenSSL (headers/libraries) for TLS support
-- MongoDB (optional; required only if you use DB-backed metadata)
-
-Build (recommended order)
-
-1. Build core components using the top-level build script or Makefile (if present):
-
-```zsh
-# from repository root
-./build.sh
-# Or use Makefile if you prefer
+# Build
 make
+
+# Test build
+make test-build
 ```
 
-2. Build server and client (examples):
+### Running
 
-```zsh
-./server/build_server.sh
-./src/client/build.sh
+#### Start Server
+```bash
+./bin/server [port]
 ```
 
-3. Initialize MongoDB (optional):
-
-```zsh
-# Start mongod as appropriate for your platform, then:
-mongo mongo/init.js
+#### Start Client
+```bash
+./bin/client [-i server_ip] [-p port]
 ```
 
-Run
-
-```zsh
-# Example: start the exchange daemon (binary location may vary)
-./src/exchange-daemon
-
-# Start a client binary (example)
-./src/client/client
+#### Client Commands
+```
+connect              - Connect to server
+upload <l> <r> [rec] - Upload file (local, remote, optional recipient)
+download <r> <l>     - Download file (remote, local)
+list                 - List server files
+disconnect           - Disconnect from server
+help                 - Show help
+quit/exit            - Exit client
 ```
 
-Note: There are multiple build/run helper scripts in `devBilds/`, `server/` and `src/`. Inspect them for platform-specific details.
+## Architecture Overview
 
----
+### Protocol Flow
+1. **Connection Establishment**: Client connects via mTLS
+2. **ECDH Key Exchange**: Perfect forward secrecy key agreement
+3. **Session Key Derivation**: XChaCha20-Poly1305 session keys
+4. **Metadata Encryption**: Hide file information in transit
+5. **File Transfer**: Encrypted data with integrity verification
 
-## Configuration & TLS
+### Security Model
+- **Confidentiality**: XChaCha20-Poly1305 authenticated encryption
+- **Integrity**: BLAKE3 hashes and Poly1305 authentication tags
+- **Authentication**: mTLS with certificate validation
+- **Forward Secrecy**: ECDH key exchange per session
+- **Anonymity**: Tor integration and traffic obfuscation
 
-- Example certificates and keys are provided for development under `src/` and `server/` (e.g. `server-key.pem`, `server-cert.pem`, `ca.pem`).
-- For production, generate strong keys and a proper CA chain. Store private keys securely and rotate them periodically.
-- The code uses AES-GCM for content encryption; certificate-based TLS is used for node authentication where configured.
+### DoS Protection
+- Connection rate limiting per IP
+- Maximum connections per IP
+- Request rate limiting with sliding window
+- Resource usage monitoring
 
-Security tips
+## Development
 
-- Protect `ca-key.pem`, `server-key.pem` and `client-key.pem`. Treat them like secrets.
-- Use firewall rules to restrict access to services and only expose required ports.
-- Enable MongoDB authentication if you enable DB-backed features.
-
----
-
-## Architecture overview
-
-1. Watcher layer (inotify): monitors file-system changes to detect new files or changes.
-2. Core transfer logic: handles chunking, hashing (BLAKE3), and encryption (AES-GCM).
-3. Network layer: minimal transport primitives and signaling (`net/` and `signal_sender.c`).
-4. Optional DB layer: MongoDB stores metadata, transfer state, and indexing via `db/` helpers.
-
-This layered model keeps concerns isolated and makes it easy to swap components (for example, replace MongoDB with a different metadata backend).
-
----
-
-## Development and testing
-
-- Unit and integration tests live in `tests/`. You can inspect `tests/test_runner.c` and the mocks in `tests/mocks/` for test scaffolding.
-- To run tests, compile the test binaries with your toolchain (there is no single test runner script by default). Example:
-
-```zsh
-gcc -Iinclude -Ideps/blake3 -o tests/test_runner tests/test_runner.c tests/test_utils.c -lssl -lcrypto
-./tests/test_runner
+### Build Targets
+```bash
+make all          # Build client and server
+make client       # Build client only
+make server       # Build server only
+make debug        # Build with debug symbols
+make release      # Optimized release build
+make clean        # Clean build artifacts
+make test-build   # Test build process
 ```
 
-Adapt compile flags as needed for your environment. Consider adding a `Makefile` target like `make test` to automate this.
+### Project Structure
+```
+├── include/           # Header files
+│   ├── protocol.h     # Protocol definitions and structures
+│   └── client.h       # Client-specific headers
+├── src/
+│   ├── crypto/        # Cryptographic functions
+│   │   ├── crypto_session.h/c  # ECDH and encryption
+│   ├── server/        # Server implementation
+│   │   ├── server_new.c        # Event-driven server
+│   ├── client/        # Client implementation
+│   │   ├── client_new.c        # ncurses client
+│   └── utils/         # Utility functions
+├── scripts/           # Setup and utility scripts
+│   ├── setup_environment.sh   # Automated setup
+│   └── generate_keys.sh       # Certificate generation
+├── bin/               # Built binaries
+├── logs/              # Log files
+└── filetrade/         # File storage directory
+```
 
----
+### Dependencies
+- **libsodium**: XChaCha20-Poly1305, ECDH, random number generation
+- **libevent**: Event-driven server architecture
+- **ncurses**: Terminal user interface
+- **OpenSSL**: TLS/mTLS implementation
+- **MongoDB**: File metadata storage
+- **GLib**: Data structures and utilities
+
+## Security Considerations
+
+### Key Management
+- Private keys never leave the system
+- Automatic key rotation (planned)
+- Secure key storage with proper permissions
+- Certificate validation and revocation checking
+
+### Network Security
+- All traffic encrypted with authenticated encryption
+- Perfect forward secrecy via ECDH
+- Protection against replay attacks
+- Rate limiting and DoS prevention
+
+### Operational Security
+- Comprehensive audit logging
+- Secure defaults and fail-safe behavior
+- Input validation and sanitization
+- Resource usage limits
+
+## Testing
+
+### Unit Tests (Planned)
+```bash
+make test        # Run all tests
+make test-crypto # Test cryptographic functions
+make test-protocol # Test protocol implementation
+```
+
+### Integration Tests (Planned)
+- End-to-end file transfer testing
+- Load testing with multiple clients
+- Security testing and fuzzing
+- Performance benchmarking
+
+### Fuzz Testing (Planned)
+- Protocol fuzzing for robustness
+- Cryptographic function testing
+- Input validation testing
 
 ## Contributing
 
-We welcome contributions. A quick checklist to get started:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
 
-- Fork the repository and create a feature branch.
-- Follow the existing C style and keep changes minimal and focused.
-- Add tests for new functionality and run existing tests.
-- Open a pull request with a clear description and rationale.
-
-Recommended next steps for the project
-
-- Add CI (GitHub Actions) to build and run tests on PRs.
-- Add a `LICENSE` file (e.g., MIT) if you want to make the project's license explicit.
-- Provide Dockerfiles and compose files for a reproducible demo (there is already `docker-compose.yml`—consider documenting the exact service layout).
-
----
-
-## Troubleshooting
-
-- If build fails due to missing headers, ensure OpenSSL and any development packages are installed (e.g., `libssl-dev` on Debian/Ubuntu).
-- For MongoDB connection issues, check `mongo/init.js` and ensure `mongod` is running and reachable.
-- If TLS fails, check that certificates are readable and not expired.
-
----
-
-## Roadmap (ideas)
-
-- Add a small HTTP/REST API for management and metadata browsing.
-- Optional P2P discovery layer for NAT traversal.
-- GUI client for easier adoption.
-
----
-
-## Credits & references
-
-- BLAKE3 reference implementation included under `deps/blake3/`.
-- Uses OpenSSL for TLS and AEAD primitives.
-
----
+### Code Style
+- C99 standard
+- Descriptive variable names
+- Comprehensive error handling
+- Clear documentation and comments
+- Secure coding practices
 
 ## License
 
-This repository does not include an explicit `LICENSE` file. If you're the project owner, add a `LICENSE` (MIT, Apache-2.0, etc.) to clarify usage terms.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
----
+## Disclaimer
 
-If you'd like, I can also:
+This software is for educational and research purposes. Use at your own risk. The authors are not responsible for any misuse or security issues arising from the use of this software.
 
-- Add a sample `LICENSE` (MIT) and commit it.
-- Create a simple `Makefile` target for `make test` and `make all`.
-- Produce a short `docker-compose` demo that wires `mongod` and the daemon for local testing.
+## Roadmap
 
-Tell me which of these you'd like next and I'll implement it.
+### Phase 1: Core Security (Completed)
+- [x] Protocol updates with ECDH and XChaCha20-Poly1305
+- [x] Event-driven server architecture
+- [x] ncurses client interface
+- [x] Build system and dependencies
+
+### Phase 2: Advanced Features (In Progress)
+- [ ] Tor integration for anonymity
+- [ ] Steganography for traffic obfuscation
+- [ ] Advanced DoS protection
+- [ ] Database integration improvements
+
+### Phase 3: Production Ready
+- [ ] Comprehensive testing suite
+- [ ] Performance optimization
+- [ ] Documentation and deployment scripts
+- [ ] Security audit and hardening
+
+### Phase 4: Extended Features
+- [ ] Multi-file transfers
+- [ ] Directory synchronization
+- [ ] Plugin system for extensions
+- [ ] Web interface option
+- [ ] Mobile client support

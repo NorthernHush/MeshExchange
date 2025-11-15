@@ -71,9 +71,20 @@
 #include "../crypto/aes_gcm.h"
 #include "../lib/error.h"
 
+// GLib
+#include <glib.h>
+
+// Состояния клиента
+typedef enum {
+    CLIENT_STATE_WAITING_CONNECT, // Ждёт команды CMD_CONNECT
+    CLIENT_STATE_WAITING_APPROVAL, // Ждёт подтверждения администратора
+    CLIENT_STATE_AUTHENTICATED,   // Подключён и аутентифицирован
+    CLIENT_STATE_ERROR            // Ошибка, нужно закрыть соединение
+} client_state_t;
+
 // Конфигурация
 // #define PORT 5151 // порт, на котором слушает сервер
-#define DEFAULT_PORT 6171  // дефолтный порт если параметр с терминала не отвечает или равен NULL
+#define DEFAULT_PORT 1512  // дефолтный порт если параметр с терминала не отвечает или равен NULL
 #define BUFFER_SIZE 4096 // размер буфера для операций ввода-вывода
 #define MAX_KEY_LENGTH 32 // максимальная длина ключа (байты)
 #define LOG_FILE "/tmp/file-server.log" // файл для логов по умолчанию
@@ -150,8 +161,8 @@ static pthread_mutex_t pending_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 // Хеш-таблица для хранения ожидающих клиентов (ключ - отпечаток)
 static GHashTable *pending_clients = NULL;
 
-// Прототип
-void *admin_interface_thread(void *arg); 
+// Прототип функции администратора
+void *admin_interface_thread(void *arg);
 
 
 // Функция логирования: выводит сообщение одновременно в файл и в терминал (stderr).
@@ -1644,6 +1655,114 @@ int accept_clients_loop(int port) {
     logger(LOG_INFO, "📢 Цикл принятия соединений завершен.");
     return 0;
 }
+// Функция потока для интерфейса администратора
+void *admin_interface_thread(void *arg) {
+    (void)arg; // Не используется
+
+    while (!g_shutdown) {
+        printf("\nAdmin Interface:\n");
+        printf("1. Check pending clients\n");
+        printf("2. Approve client\n");
+        printf("3. Reject client\n");
+        printf("4. List all pending clients\n");
+        printf("5. Exit admin interface\n");
+        printf("Enter choice: ");
+
+        char input[256];
+        if (!fgets(input, sizeof(input), stdin)) {
+            break;
+        }
+
+        int choice = atoi(input);
+
+        switch (choice) {
+            case 1: {
+                // Check pending clients
+                pthread_mutex_lock(&pending_clients_mutex);
+                GHashTableIter iter;
+                gpointer key, value;
+                int count = 0;
+                g_hash_table_iter_init(&iter, pending_clients);
+                while (g_hash_table_iter_next(&iter, &key, &value)) {
+                    printf("Pending client: %s\n", (char *)key);
+                    count++;
+                }
+                if (count == 0) {
+                    printf("No pending clients.\n");
+                }
+                pthread_mutex_unlock(&pending_clients_mutex);
+                break;
+            }
+            case 2: {
+                // Approve client
+                printf("Enter client fingerprint to approve: ");
+                if (!fgets(input, sizeof(input), stdin)) break;
+                input[strcspn(input, "\n")] = 0; // Remove newline
+
+                pthread_mutex_lock(&pending_clients_mutex);
+                pending_client_info_t *info = g_hash_table_lookup(pending_clients, input);
+                if (info) {
+                    // Устанавливаем состояние клиента в AUTHENTICATED
+                    pthread_mutex_lock(info->mutex_ref);
+                    *(info->state_ref) = CLIENT_STATE_AUTHENTICATED;
+                    pthread_cond_signal(info->cond_ref);
+                    pthread_mutex_unlock(info->mutex_ref);
+
+                    printf("Client %s approved.\n", input);
+                } else {
+                    printf("Client %s not found in pending list.\n", input);
+                }
+                pthread_mutex_unlock(&pending_clients_mutex);
+                break;
+            }
+            case 3: {
+                // Reject client
+                printf("Enter client fingerprint to reject: ");
+                if (!fgets(input, sizeof(input), stdin)) break;
+                input[strcspn(input, "\n")] = 0; // Remove newline
+
+                pthread_mutex_lock(&pending_clients_mutex);
+                pending_client_info_t *info = g_hash_table_lookup(pending_clients, input);
+                if (info) {
+                    // Устанавливаем состояние клиента в ERROR
+                    pthread_mutex_lock(info->mutex_ref);
+                    *(info->state_ref) = CLIENT_STATE_ERROR;
+                    pthread_cond_signal(info->cond_ref);
+                    pthread_mutex_unlock(info->mutex_ref);
+
+                    printf("Client %s rejected.\n", input);
+                } else {
+                    printf("Client %s not found in pending list.\n", input);
+                }
+                pthread_mutex_unlock(&pending_clients_mutex);
+                break;
+            }
+            case 4: {
+                // List all pending clients
+                pthread_mutex_lock(&pending_clients_mutex);
+                GHashTableIter iter;
+                gpointer key, value;
+                g_hash_table_iter_init(&iter, pending_clients);
+                printf("Pending clients:\n");
+                while (g_hash_table_iter_next(&iter, &key, &value)) {
+                    printf("- %s\n", (char *)key);
+                }
+                pthread_mutex_unlock(&pending_clients_mutex);
+                break;
+            }
+            case 5: {
+                // Exit admin interface
+                printf("Exiting admin interface.\n");
+                return NULL;
+            }
+            default:
+                printf("Invalid choice.\n");
+                break;
+        }
+    }
+    return NULL;
+}
+
 // точка входа
 int main(int argc, char* argv[]) {
     int server_port = DEFAULT_PORT;
@@ -1720,3 +1839,4 @@ int main(int argc, char* argv[]) {
 
     cleanup_resources();
     return EXIT_SUCCESS;
+}

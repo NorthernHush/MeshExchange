@@ -1,87 +1,157 @@
-#include <stdlib.h>
+#include "../../include/protocol.h"
+#include "crypto_session.h"
 #include <string.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <strings.h>  // For explicit_bzero
-#include <sys/prctl.h>  // For prctl
-#include "crypto.h"
+#include <stdlib.h>
+#include <sodium.h>
 
-// Fallback for explicit_bzero if not available
-#ifndef explicit_bzero
-#define explicit_bzero(b, len) memset(b, 0, len)
-#endif
+// Initialize crypto session
+int crypto_session_init(crypto_session_t *session) {
+    if (!session) return -1;
 
-// Create a secure key with locked memory
-secure_key_t* secure_key_create(void) {
-    // Allocate memory with MAP_LOCKED to prevent swapping
-    secure_key_t *key = mmap(NULL, sizeof(secure_key_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_LOCKED, -1, 0);
+    memset(session, 0, sizeof(crypto_session_t));
+    if (sodium_init() < 0) {
+        return -1; // libsodium initialization failed
+    }
+    return crypto_session_generate_keys(session);
+}
 
-    if (key == MAP_FAILED) {
-        // Fallback to regular malloc if mlock fails
-        key = calloc(1, sizeof(secure_key_t));
-        if (!key) return NULL;
+// Generate ECDH keypair
+int crypto_session_generate_keys(crypto_session_t *session) {
+    if (!session) return -1;
 
-        // Try to lock the memory
-        if (mlock(key, sizeof(secure_key_t)) != 0) {
-            // If mlock fails, continue anyway - better than failing completely
+    // Generate private key
+    randombytes_buf(session->private_key, ECDH_PRIVATE_KEY_LEN);
+
+    // Derive public key: public = private * G
+    crypto_scalarmult_base(session->public_key, session->private_key);
+
+    return 0;
+}
+
+// Compute shared secret from peer's public key
+int crypto_session_compute_shared_secret(crypto_session_t *session) {
+    if (!session || !session->peer_public_key) return -1;
+
+    // shared_secret = private * peer_public
+    if (crypto_scalarmult(session->shared_secret, session->private_key,
+                         session->peer_public_key) != 0) {
+        return -1; // Invalid public key
+    }
+
+    session->ecdh_completed = 1;
+    return 0;
+}
+
+// Derive session key from shared secret using HKDF
+int crypto_session_derive_session_key(crypto_session_t *session) {
+    if (!session || !session->ecdh_completed) return -1;
+
+    // Use BLAKE2b as HKDF-like function
+    crypto_generichash(session->session_key, SESSION_KEY_LEN,
+                      session->shared_secret, crypto_scalarmult_BYTES,
+                      NULL, 0);
+
+    session->session_established = 1;
+    return 0;
+}
+
+// Encrypt metadata using XChaCha20-Poly1305
+int crypto_session_encrypt_metadata(crypto_session_t *session,
+                                   const char *filename, long long filesize,
+                                   const char *recipient, EncryptedMetadata *encrypted) {
+    if (!session || !session->session_established || !encrypted) return -1;
+
+    // Generate random nonce
+    randombytes_buf(encrypted->nonce, XCHACHA20_NONCE_LEN);
+
+    unsigned long long ciphertext_len;
+
+    // Encrypt filename
+    if (crypto_aead_xchacha20poly1305_ietf_encrypt(
+            encrypted->encrypted_filename, &ciphertext_len,
+            (const unsigned char *)filename, strlen(filename),
+            NULL, 0, // no additional data
+            NULL, // no secret nonce
+            encrypted->nonce, session->session_key) != 0) {
+        return -1;
+    }
+    memcpy(encrypted->filename_auth_tag, encrypted->encrypted_filename + ciphertext_len - 16, 16);
+
+    // Encrypt filesize
+    uint8_t size_buf[sizeof(long long)];
+    memcpy(size_buf, &filesize, sizeof(long long));
+    if (crypto_aead_xchacha20poly1305_ietf_encrypt(
+            encrypted->encrypted_size, &ciphertext_len,
+            size_buf, sizeof(long long),
+            NULL, 0, NULL, encrypted->nonce, session->session_key) != 0) {
+        return -1;
+    }
+    memcpy(encrypted->size_auth_tag, encrypted->encrypted_size + ciphertext_len - 16, 16);
+
+    // Encrypt recipient if provided
+    if (recipient && strlen(recipient) > 0) {
+        if (crypto_aead_xchacha20poly1305_ietf_encrypt(
+                encrypted->encrypted_recipient, &ciphertext_len,
+                (const unsigned char *)recipient, strlen(recipient),
+                NULL, 0, NULL, encrypted->nonce, session->session_key) != 0) {
+            return -1;
         }
+        memcpy(encrypted->recipient_auth_tag, encrypted->encrypted_recipient + ciphertext_len - 16, 16);
     }
 
-    // Prevent core dumps from including this memory
-    if (prctl(PR_SET_DUMPABLE, 0) != 0) {
-        // prctl failed, but continue
-    }
-
-    key->initialized = 0;
-    return key;
+    return 0;
 }
 
-// Destroy a secure key
-void secure_key_destroy(secure_key_t *key) {
-    if (!key) return;
+// Decrypt metadata using XChaCha20-Poly1305
+int crypto_session_decrypt_metadata(crypto_session_t *session,
+                                   const EncryptedMetadata *encrypted,
+                                   char *filename, long long *filesize, char *recipient) {
+    if (!session || !session->session_established || !encrypted) return -1;
 
-    // Zero out the key
-    explicit_bzero((void*)key->key, sizeof(key->key));
-    key->initialized = 0;
+    unsigned long long plaintext_len;
 
-    // If it was mmap'd, munmap it
-    if (munmap(key, sizeof(secure_key_t)) == 0) {
-        return;
+    // Decrypt filename
+    if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+            (unsigned char *)filename, &plaintext_len,
+            NULL, // no secret nonce
+            encrypted->encrypted_filename, ENCRYPTED_METADATA_MAX_LEN,
+            NULL, 0, // no additional data
+            encrypted->nonce, session->session_key) != 0) {
+        return -1; // Authentication failed
+    }
+    filename[plaintext_len] = '\0';
+
+    // Decrypt filesize
+    uint8_t size_buf[sizeof(long long)];
+    if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+            size_buf, &plaintext_len,
+            NULL,
+            encrypted->encrypted_size, sizeof(long long) + 16,
+            NULL, 0, encrypted->nonce, session->session_key) != 0) {
+        return -1;
+    }
+    memcpy(filesize, size_buf, sizeof(long long));
+
+    // Decrypt recipient if present
+    if (recipient && encrypted->encrypted_recipient[0]) {
+        if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+                (unsigned char *)recipient, &plaintext_len,
+                NULL,
+                encrypted->encrypted_recipient, FINGERPRINT_LEN + 16,
+                NULL, 0, encrypted->nonce, session->session_key) != 0) {
+            return -1;
+        }
+        recipient[plaintext_len] = '\0';
+    } else if (recipient) {
+        recipient[0] = '\0';
     }
 
-    // Otherwise it was malloc'd, free it
-    free(key);
+    return 0;
 }
 
-// Set the key data
-crypto_status_t secure_key_set(secure_key_t *key, const uint8_t *data, size_t len) {
-    if (!key || !data || len != 32) {
-        return CRYPTO_ERR_INVALID_INPUT;
+// Clean up session
+void crypto_session_cleanup(crypto_session_t *session) {
+    if (session) {
+        sodium_memzero(session, sizeof(crypto_session_t));
     }
-
-    memcpy((void*)key->key, data, len);
-    key->initialized = 1;
-    return CRYPTO_OK;
-}
-
-// Create a crypto session
-crypto_session_t* crypto_session_create(secure_key_t *key) {
-    if (!key || !key->initialized) {
-        return NULL;
-    }
-
-    crypto_session_t *session = calloc(1, sizeof(crypto_session_t));
-    if (!session) return NULL;
-
-    session->key = key;
-    return session;
-}
-
-// Destroy a crypto session
-void crypto_session_destroy(crypto_session_t *session) {
-    if (!session) return;
-    // Note: we don't destroy the key here, as it might be shared
-    free(session);
 }

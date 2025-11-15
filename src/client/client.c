@@ -33,7 +33,7 @@
 #include "blake3.h"
 
 // Константы приложения
-#define DEFAULT_PORT 8181                    // Порт сервера по умолчанию
+#define DEFAULT_PORT 1512                    // Порт сервера по умолчанию
 #define CLEAR "clear"                        // Команда очистки экрана
 #define BUFFER_SIZE 4096                     // Размер буфера для передачи данных
 #define FILENAME_MAX_LEN 256                 // Максимальная длина имени файла
@@ -615,12 +615,12 @@ void *command_reader_thread(void* arg) {
 
     g_command_loop_running = 1;
     while (g_command_loop_running) {
-        input = readline("file_exchange> ");
-        if (!input) {
-            // EOF (Ctrl+D)
-            printf("");
-            break;
-        }
+    input = readline("file_exchange> ");
+    if (!input) {
+        // EOF (Ctrl+D)
+        printf("\n");
+        break;
+    }
 
         if (strlen(input) > 0) {
             add_history(input); // Добавить в историю readline
@@ -631,6 +631,7 @@ void *command_reader_thread(void* arg) {
 
         if (parsed_args == 0) {
             free(input);
+            printf("\n");
             continue; // Пустая строка
         }
 

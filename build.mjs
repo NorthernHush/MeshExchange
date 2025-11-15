@@ -123,17 +123,19 @@ async function buildClient() {
 
 	for (const [cmd, args] of [...compile, ...blakeObjs]) await run(cmd, args);
 
-		const linkArgs = ['-o', 'client', 'client.o', 'mongo_ops.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', ...pkgLibs.split(' ').filter(Boolean), '-lssl', '-lcrypto', '-lpthread'];
+	const linkArgs = ['-o', 'client', 'client.o', 'mongo_ops.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', ...pkgLibs.split(' ').filter(Boolean), '-lssl', '-lcrypto', '-lpthread', '-lreadline'];
 	return run('gcc', linkArgs);
 }
 //* собираем сервер
 async function buildServer() {
 	const pkgCflags = (await pkgConfig('--cflags libmongoc-1.0')) || '';
 	const pkgLibs = (await pkgConfig('--libs libmongoc-1.0')) || '';
+	const glibCflags = (await pkgConfig('--cflags glib-2.0')) || '';
+	const glibLibs = (await pkgConfig('--libs glib-2.0')) || '';
 	const common = ['-Iinclude', `-I${BLAKE3_DIR}`, '-Wall', '-Wextra'];
 
 	const compile = [
-		['gcc', ['-c', 'src/server/server.c', '-o', 'server.o', ...common, ...pkgCflags.split(' ').filter(Boolean)]],
+		['gcc', ['-c', 'src/server/server.c', '-o', 'server.o', ...common, ...pkgCflags.split(' ').filter(Boolean), ...glibCflags.split(' ').filter(Boolean)]],
 		['gcc', ['-c', 'src/db/mongo_ops_server.c', '-o', 'mongo_ops_server.o', ...common, ...pkgCflags.split(' ').filter(Boolean)]],
 		['gcc', ['-c', 'src/utils/utils.c', '-o', 'utils.o', ...common]],
 		['gcc', ['-c', 'src/crypto/aes_gcm.c', '-o', 'aes_gcm.o', ...common]],
@@ -151,7 +153,7 @@ async function buildServer() {
 
 	for (const [cmd, args] of [...compile, ...blakeObjs]) await run(cmd, args);
 
-		const linkArgs = ['-o', 'server', 'server.o', 'mongo_ops_server.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', ...pkgLibs.split(' ').filter(Boolean), '-lssl', '-lcrypto', '-lpthread'];
+		const linkArgs = ['-o', 'server', 'server.o', 'mongo_ops_server.o', 'utils.o', 'aes_gcm.o', 'blake3.o', 'blake3_dispatch.o', 'blake3_portable.o', 'blake3_sse2.o', 'blake3_sse41.o', 'blake3_avx2.o', ...pkgLibs.split(' ').filter(Boolean), ...glibLibs.split(' ').filter(Boolean), '-lssl', '-lcrypto', '-lpthread'];
 	return run('gcc', linkArgs);
 
 }

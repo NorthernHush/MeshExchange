@@ -5,11 +5,9 @@
 #include <bson/bson.h>
 #include <string.h>
 
-// extern mongoc_collection_t *g_collection = NULL;
-
-//* Глобальная переменная g_collection предполагается инициализированной 
-//* в инициализации сервера
-//* extern mongoc_collection_t *g_collection;
+// Global MongoDB variables
+mongoc_client_t *g_mongo_client = NULL;
+mongoc_collection_t *g_collection = NULL;
 
 /**
  * @brief Конвертирует информацию об изменении файла в BSON-док.

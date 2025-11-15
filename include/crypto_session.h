@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <sodium.h>
-#include "../../include/protocol.h"
+#include "protocol.h"
 
 // Session context for ECDH key exchange and encryption
 typedef struct {
